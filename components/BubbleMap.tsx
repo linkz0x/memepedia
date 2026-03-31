@@ -166,6 +166,18 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
       .style("opacity", 0)
       .style("pointer-events", "none");
 
+    function navigateTo(url: string, color?: string) {
+      overlay.attr("fill", color || "#0a0a12");
+      overlay
+        .transition()
+        .duration(350)
+        .ease(d3.easeCubicIn)
+        .style("opacity", 1)
+        .on("end", () => {
+          router.push(url);
+        });
+    }
+
     const overviewContainer = svg.append("g").attr("class", "overview");
     const expandedContainer = svg
       .append("g")
@@ -212,6 +224,11 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
       .attr("filter", (d) => (d.depth === 1 ? "url(#glow)" : "none"))
       .style("opacity", (d) => (d.depth === 2 ? 0 : 1));
 
+    overviewNodes.style(
+      "pointer-events",
+      (d) => (d.depth === 2 ? "none" : "all")
+    );
+
     overviewNodes
       .append("text")
       .attr("text-anchor", "middle")
@@ -250,6 +267,7 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
           );
           g.select("circle").style("opacity", circleOpacity);
           g.select("text").style("opacity", zoomRatio > 4 ? 1 : 0);
+          g.style("pointer-events", circleOpacity > 0.3 ? "all" : "none");
         }
 
         if (d.depth === 1) {
@@ -308,28 +326,12 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
 
       const color = TYPE_COLORS[type];
 
-      expandedContainer
-        .append("text")
-        .attr("x", 40)
-        .attr("y", 50)
-        .attr("fill", color)
-        .attr("font-size", "14px")
-        .attr("font-weight", "500")
-        .style("opacity", 0.6)
-        .style("text-transform", "uppercase")
-        .style("letter-spacing", "0.1em")
-        .text(TYPE_LABELS[type]);
-
-      expandedContainer
-        .append("text")
-        .attr("x", 40)
-        .attr("y", 75)
-        .attr("fill", "white")
-        .attr("font-size", "11px")
-        .style("opacity", 0.3)
-        .style("cursor", "pointer")
-        .text("scroll down to go back")
-        .on("click", () => transitionToOverview());
+      const label = document.getElementById("category-label");
+      if (label) {
+        label.textContent = TYPE_LABELS[type];
+        label.style.color = color;
+        label.style.opacity = "1";
+      }
 
       const bubbles = expandedContainer
         .selectAll<SVGGElement, d3.HierarchyCircularNode<HierarchyNode>>(
@@ -395,7 +397,8 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
         .on("click", (event, d) => {
           event.stopPropagation();
           if (d.data.slug && d.data.type) {
-            router.push(`/${TYPE_PLURALS[d.data.type]}/${d.data.slug}`);
+            const color = TYPE_COLORS[d.data.type];
+            navigateTo(`/${TYPE_PLURALS[d.data.type]}/${d.data.slug}`, color);
           }
         });
     }
@@ -458,6 +461,11 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
         .on("end", () => {
           stateRef.current.mode = "overview";
           stateRef.current.expandedType = null;
+
+          const label = document.getElementById("category-label");
+          if (label) {
+            label.style.opacity = "0";
+          }
 
           expandedContainer
             .style("opacity", 0)
@@ -553,7 +561,8 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
             .call(overviewZoom.transform, target);
         }
       } else if (d.depth === 2 && d.data.slug && d.data.type) {
-        router.push(`/${TYPE_PLURALS[d.data.type]}/${d.data.slug}`);
+        const color = TYPE_COLORS[d.data.type];
+        navigateTo(`/${TYPE_PLURALS[d.data.type]}/${d.data.slug}`, color);
       }
     });
 

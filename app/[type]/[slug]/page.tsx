@@ -34,7 +34,7 @@ export default async function EntryPage({ params }: PageProps) {
         }}
       />
 
-      <div className="relative z-10 max-w-2xl mx-auto px-6 pt-8">
+      <div className="relative z-10 max-w-5xl mx-auto px-6 pt-8">
         <Link
           href="/"
           className="inline-flex items-center gap-2 glass rounded-full px-4 py-2 text-sm text-white/60 hover:text-white/90 transition-colors mb-8"
@@ -55,69 +55,73 @@ export default async function EntryPage({ params }: PageProps) {
           Back to Map
         </Link>
 
-        {entry.image_url && (
-          <div className="relative mb-8 rounded-2xl overflow-hidden glass h-64">
-            <Image
-              src={entry.image_url}
-              alt={entry.name}
-              fill
-              className="object-cover"
-            />
-          </div>
-        )}
-
-        <div className="mb-2">
-          <span className="text-xs uppercase tracking-widest text-white/30">
-            {entry.type}
-          </span>
-        </div>
-
-        <h1 className="text-4xl font-bold text-white mb-2 text-glow">
-          {entry.name}
-        </h1>
-
-        <p className="text-lg text-white/50 mb-8">{entry.headline}</p>
-
-        <div className="mb-8">
-          <DetailCard entry={entry} />
-        </div>
-
-        <GlassCard className="p-6 mb-8">
-          <p className="text-sm text-white/70 leading-relaxed whitespace-pre-line">
-            {entry.description}
-          </p>
-        </GlassCard>
-
-        {originMeme && (
-          <div className="mb-8">
-            <p className="text-xs uppercase tracking-widest text-white/30 mb-3">
-              Origin Meme
-            </p>
-            <Link href={`/memes/${originMeme.slug}`}>
-              <GlassCard className="p-5 hover:bg-white/[0.06] transition-colors">
-                <p className="text-sm font-medium text-white/90">
-                  {originMeme.name}
-                </p>
-                <p className="text-xs text-white/40 mt-1">
-                  {originMeme.headline}
-                </p>
-              </GlassCard>
-            </Link>
-          </div>
-        )}
-
-        {entry.tags && entry.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {entry.tags.map((tag) => (
-              <span
-                key={tag}
-                className="glass rounded-full px-3 py-1 text-xs text-white/50"
-              >
-                {tag}
+        <div className="flex flex-col lg:flex-row lg:gap-10">
+          <div className="flex-1 min-w-0">
+            <div className="mb-2">
+              <span className="text-xs uppercase tracking-widest text-white/30">
+                {entry.type}
               </span>
-            ))}
+            </div>
+
+            <h1 className="text-4xl font-bold text-white mb-2 text-glow">
+              {entry.name}
+            </h1>
+
+            <p className="text-lg text-white/50 mb-8">{entry.headline}</p>
+
+            <div className="mb-8">
+              <DetailCard entry={entry} />
+            </div>
+
+            <GlassCard className="p-6 mb-8">
+              <p className="text-sm text-white/70 leading-relaxed whitespace-pre-line">
+                {entry.description}
+              </p>
+            </GlassCard>
+
+            {originMeme && (
+              <div className="mb-8">
+                <p className="text-xs uppercase tracking-widest text-white/30 mb-3">
+                  Origin Meme
+                </p>
+                <Link href={`/memes/${originMeme.slug}`}>
+                  <GlassCard className="p-5 hover:bg-white/[0.06] transition-colors">
+                    <p className="text-sm font-medium text-white/90">
+                      {originMeme.name}
+                    </p>
+                    <p className="text-xs text-white/40 mt-1">
+                      {originMeme.headline}
+                    </p>
+                  </GlassCard>
+                </Link>
+              </div>
+            )}
+
+            {entry.tags && entry.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {entry.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="glass rounded-full px-3 py-1 text-xs text-white/50"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          {entry.image_url && (
+            <div className="relative mb-8 lg:mb-0 rounded-2xl overflow-hidden glass h-64 lg:h-80 lg:w-80 lg:shrink-0 lg:sticky lg:top-8 order-first lg:order-last">
+              <Image
+                src={entry.image_url}
+                alt={entry.name}
+                fill
+                className="object-cover"
+              />
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );

@@ -25,6 +25,10 @@ export default async function HomePage() {
         <p className="text-xs text-white/40 mt-0.5">
           The Wikipedia of Meme Coins
         </p>
+        <p
+          id="category-label"
+          className="text-sm font-medium mt-2 transition-all duration-400 opacity-0"
+        />
       </div>
 
       <div className="w-full h-full">
