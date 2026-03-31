@@ -36,6 +36,24 @@ function buildHierarchy(entries: Entry[]): HierarchyNode {
   };
 }
 
+function buildCategoryHierarchy(
+  entries: Entry[],
+  type: EntryType
+): HierarchyNode {
+  return {
+    name: TYPE_LABELS[type],
+    type,
+    children: entries
+      .filter((e) => e.type === type)
+      .map((e) => ({
+        name: e.name,
+        type: e.type,
+        slug: e.slug,
+        significance: e.significance,
+      })),
+  };
+}
+
 const TYPE_PLURALS: Record<EntryType, string> = {
   token: "tokens",
   character: "characters",
@@ -43,9 +61,16 @@ const TYPE_PLURALS: Record<EntryType, string> = {
   meme: "memes",
 };
 
+type Mode = "overview" | "expanded";
+
 export default function BubbleMap({ entries }: BubbleMapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const router = useRouter();
+  const stateRef = useRef<{
+    mode: Mode;
+    expandedType: EntryType | null;
+    transitioning: boolean;
+  }>({ mode: "overview", expandedType: null, transitioning: false });
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -57,6 +82,11 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
 
     svg.attr("viewBox", `0 0 ${width} ${height}`);
     svg.selectAll("*").remove();
+    stateRef.current = {
+      mode: "overview",
+      expandedType: null,
+      transitioning: false,
+    };
 
     const defs = svg.append("defs");
 
@@ -94,6 +124,23 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
         .attr("offset", "100%")
         .attr("stop-color", color)
         .attr("stop-opacity", 0.12);
+
+      const expandGrad = defs
+        .append("radialGradient")
+        .attr("id", `grad-expand-${type}`)
+        .attr("cx", "35%")
+        .attr("cy", "35%")
+        .attr("r", "65%");
+      expandGrad
+        .append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", color)
+        .attr("stop-opacity", 0.5);
+      expandGrad
+        .append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", color)
+        .attr("stop-opacity", 0.1);
     });
 
     const filter = defs
@@ -111,6 +158,23 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
     feMerge.append("feMergeNode").attr("in", "blur");
     feMerge.append("feMergeNode").attr("in", "SourceGraphic");
 
+    const overlay = svg
+      .append("rect")
+      .attr("width", width)
+      .attr("height", height)
+      .attr("fill", "var(--bg-primary)")
+      .style("opacity", 0)
+      .style("pointer-events", "none");
+
+    const overviewContainer = svg.append("g").attr("class", "overview");
+    const expandedContainer = svg
+      .append("g")
+      .attr("class", "expanded")
+      .style("opacity", 0)
+      .style("pointer-events", "none");
+
+    // --- OVERVIEW MODE ---
+
     const hierarchy = d3
       .hierarchy(buildHierarchy(entries))
       .sum((d) => d.significance || 1)
@@ -122,18 +186,15 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
       .padding((d) => (d.depth === 0 ? 30 : 15));
 
     const root = pack(hierarchy);
-
-    const container = svg.append("g");
-
     const nodes = root.descendants().slice(1);
 
-    const nodeGroups = container
+    const overviewNodes = overviewContainer
       .selectAll<SVGGElement, d3.HierarchyCircularNode<HierarchyNode>>("g")
       .data(nodes)
       .join("g")
       .attr("transform", (d) => `translate(${d.x},${d.y})`);
 
-    nodeGroups
+    overviewNodes
       .append("circle")
       .attr("r", (d) => d.r)
       .attr("fill", (d) => {
@@ -151,7 +212,7 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
       .attr("filter", (d) => (d.depth === 1 ? "url(#glow)" : "none"))
       .style("opacity", (d) => (d.depth === 2 ? 0 : 1));
 
-    nodeGroups
+    overviewNodes
       .append("text")
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "central")
@@ -167,80 +228,336 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
       })
       .text((d) => d.data.name);
 
-    function updateVisibility(transform: d3.ZoomTransform) {
-      const k = transform.k;
-
-      nodeGroups.each(function (d) {
-        const g = d3.select(this);
-        const apparentR = d.r * k;
-
-        if (d.depth === 2) {
-          const circleOpacity = Math.min(
-            1,
-            Math.max(0, (apparentR - 12) / 18)
-          );
-          g.select("circle").style("opacity", circleOpacity);
-
-          const textOpacity = apparentR > 30 ? 1 : 0;
-          g.select("text").style("opacity", textOpacity);
-        }
-
-        if (d.depth === 1) {
-          const labelOpacity = Math.min(
-            1,
-            Math.max(0, 1 - (apparentR - 180) / 150)
-          );
-          g.select("text").style("opacity", labelOpacity);
-        }
-      });
-    }
-
-    const initialScale = size * 0.9 / (root.r * 2);
+    const initialScale = (size * 0.9) / (root.r * 2);
     const initialX = width / 2 - root.x * initialScale;
     const initialY = height / 2 - root.y * initialScale;
     const initialTransform = d3.zoomIdentity
       .translate(initialX, initialY)
       .scale(initialScale);
 
-    function zoomToNode(node: d3.HierarchyCircularNode<HierarchyNode>) {
-      const targetScale = (size * 0.85) / (node.r * 2);
-      const tx = width / 2 - node.x * targetScale;
-      const ty = height / 2 - node.y * targetScale;
-      const target = d3.zoomIdentity.translate(tx, ty).scale(targetScale);
+    const EXPAND_THRESHOLD = 3.5;
 
-      svg
-        .transition()
-        .duration(750)
-        .ease(d3.easeCubicInOut)
-        .call(zoom.transform, target);
+    function updateOverviewVisibility(transform: d3.ZoomTransform) {
+      const zoomRatio = transform.k / initialScale;
+
+      overviewNodes.each(function (d) {
+        const g = d3.select(this);
+
+        if (d.depth === 2) {
+          const circleOpacity = Math.min(
+            1,
+            Math.max(0, (zoomRatio - 2) / 1.5)
+          );
+          g.select("circle").style("opacity", circleOpacity);
+          g.select("text").style("opacity", zoomRatio > 4 ? 1 : 0);
+        }
+
+        if (d.depth === 1) {
+          const labelOpacity = Math.min(
+            1,
+            Math.max(0, 1 - (zoomRatio - 2.5) / 1.5)
+          );
+          g.select("text").style("opacity", labelOpacity);
+        }
+      });
     }
 
-    function resetZoom() {
-      svg
-        .transition()
-        .duration(750)
-        .ease(d3.easeCubicInOut)
-        .call(zoom.transform, initialTransform);
+    // --- EXPANDED MODE ---
+
+    function findClosestCategory(
+      transform: d3.ZoomTransform
+    ): d3.HierarchyCircularNode<HierarchyNode> | null {
+      const k = transform.k;
+      const viewCx = (width / 2 - transform.x) / k;
+      const viewCy = (height / 2 - transform.y) / k;
+      const categories = root.children || [];
+
+      let closest: d3.HierarchyCircularNode<HierarchyNode> | null = null;
+      let minDist = Infinity;
+
+      for (const cat of categories) {
+        const dx = cat.x - viewCx;
+        const dy = cat.y - viewCy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < minDist) {
+          minDist = dist;
+          closest = cat;
+        }
+      }
+
+      return closest;
     }
+
+    function renderExpanded(type: EntryType) {
+      expandedContainer.selectAll("*").remove();
+
+      const catHierarchy = d3
+        .hierarchy(buildCategoryHierarchy(entries, type))
+        .sum((d) => d.significance || 1)
+        .sort((a, b) => (b.value || 0) - (a.value || 0));
+
+      const expandPack = d3
+        .pack<HierarchyNode>()
+        .size([width * 0.85, height * 0.85])
+        .padding(25);
+
+      const catRoot = expandPack(catHierarchy);
+      const offsetX = (width - width * 0.85) / 2;
+      const offsetY = (height - height * 0.85) / 2 + 20;
+      const childNodes = catRoot.children || [];
+
+      const color = TYPE_COLORS[type];
+
+      expandedContainer
+        .append("text")
+        .attr("x", 40)
+        .attr("y", 50)
+        .attr("fill", color)
+        .attr("font-size", "14px")
+        .attr("font-weight", "500")
+        .style("opacity", 0.6)
+        .style("text-transform", "uppercase")
+        .style("letter-spacing", "0.1em")
+        .text(TYPE_LABELS[type]);
+
+      expandedContainer
+        .append("text")
+        .attr("x", 40)
+        .attr("y", 75)
+        .attr("fill", "white")
+        .attr("font-size", "11px")
+        .style("opacity", 0.3)
+        .style("cursor", "pointer")
+        .text("scroll down to go back")
+        .on("click", () => transitionToOverview());
+
+      const bubbles = expandedContainer
+        .selectAll<SVGGElement, d3.HierarchyCircularNode<HierarchyNode>>(
+          "g.entry"
+        )
+        .data(childNodes)
+        .join("g")
+        .attr("class", "entry")
+        .attr(
+          "transform",
+          (d) => `translate(${d.x + offsetX},${d.y + offsetY})`
+        )
+        .style("cursor", "pointer");
+
+      bubbles
+        .append("circle")
+        .attr("r", 0)
+        .attr("fill", `url(#grad-expand-${type})`)
+        .attr("stroke", color)
+        .attr("stroke-opacity", 0.3)
+        .attr("stroke-width", 1.5)
+        .attr("filter", "url(#glow)")
+        .transition()
+        .duration(600)
+        .delay((_, i) => i * 60)
+        .ease(d3.easeBackOut.overshoot(1.2))
+        .attr("r", (d) => d.r);
+
+      bubbles
+        .append("text")
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "central")
+        .attr("fill", "white")
+        .attr("pointer-events", "none")
+        .style("font-weight", "500")
+        .style("opacity", 0)
+        .style("font-size", (d) =>
+          `${Math.max(10, Math.min(d.r * 0.28, 18))}px`
+        )
+        .text((d) => d.data.name)
+        .transition()
+        .duration(400)
+        .delay((_, i) => 200 + i * 60)
+        .style("opacity", 1);
+
+      bubbles
+        .on("mouseover", function () {
+          d3.select(this)
+            .select("circle")
+            .transition()
+            .duration(200)
+            .attr("stroke-opacity", 0.6)
+            .attr("stroke-width", 2.5);
+        })
+        .on("mouseout", function () {
+          d3.select(this)
+            .select("circle")
+            .transition()
+            .duration(200)
+            .attr("stroke-opacity", 0.3)
+            .attr("stroke-width", 1.5);
+        })
+        .on("click", (event, d) => {
+          event.stopPropagation();
+          if (d.data.slug && d.data.type) {
+            router.push(`/${TYPE_PLURALS[d.data.type]}/${d.data.slug}`);
+          }
+        });
+    }
+
+    function transitionToExpanded(type: EntryType) {
+      if (stateRef.current.transitioning) return;
+      stateRef.current.transitioning = true;
+
+      const color = TYPE_COLORS[type];
+      overlay.attr("fill", color);
+
+      overlay
+        .transition()
+        .duration(350)
+        .ease(d3.easeCubicIn)
+        .style("opacity", 0.6)
+        .on("end", () => {
+          stateRef.current.mode = "expanded";
+          stateRef.current.expandedType = type;
+
+          overviewContainer.style("opacity", 0).style("pointer-events", "none");
+          svg.on(".zoom", null);
+
+          renderExpanded(type);
+
+          expandedContainer
+            .style("pointer-events", "all")
+            .style("opacity", 1);
+
+          overlay
+            .transition()
+            .duration(400)
+            .ease(d3.easeCubicOut)
+            .style("opacity", 0)
+            .on("end", () => {
+              stateRef.current.transitioning = false;
+              svg.call(expandedZoom);
+              svg
+                .call(
+                  expandedZoom.transform,
+                  d3.zoomIdentity.translate(0, 0).scale(1)
+                );
+            });
+        });
+    }
+
+    function transitionToOverview() {
+      if (stateRef.current.transitioning) return;
+      stateRef.current.transitioning = true;
+
+      const type = stateRef.current.expandedType;
+      const color = type ? TYPE_COLORS[type] : "#0a0a12";
+      overlay.attr("fill", color);
+
+      overlay
+        .transition()
+        .duration(350)
+        .ease(d3.easeCubicIn)
+        .style("opacity", 0.6)
+        .on("end", () => {
+          stateRef.current.mode = "overview";
+          stateRef.current.expandedType = null;
+
+          expandedContainer
+            .style("opacity", 0)
+            .style("pointer-events", "none");
+          expandedContainer.selectAll("*").remove();
+
+          overviewContainer
+            .style("opacity", 1)
+            .style("pointer-events", "all");
+
+          svg.on(".zoom", null);
+          svg.call(overviewZoom);
+          svg.call(overviewZoom.transform, initialTransform);
+          updateOverviewVisibility(initialTransform);
+
+          overlay
+            .transition()
+            .duration(400)
+            .ease(d3.easeCubicOut)
+            .style("opacity", 0)
+            .on("end", () => {
+              stateRef.current.transitioning = false;
+            });
+        });
+    }
+
+    // --- ZOOM BEHAVIORS ---
 
     let focusedNode: d3.HierarchyCircularNode<HierarchyNode> | null = null;
 
-    nodeGroups.style("cursor", "pointer").on("click", (event, d) => {
+    const overviewZoom = d3
+      .zoom<SVGSVGElement, unknown>()
+      .scaleExtent([initialScale * 0.8, initialScale * 25])
+      .on("zoom", (event) => {
+        if (stateRef.current.transitioning) return;
+        overviewContainer.attr("transform", event.transform.toString());
+        updateOverviewVisibility(event.transform);
+
+        const zoomRatio = event.transform.k / initialScale;
+
+        if (
+          event.sourceEvent &&
+          stateRef.current.mode === "overview" &&
+          zoomRatio > EXPAND_THRESHOLD
+        ) {
+          const target = findClosestCategory(event.transform);
+          if (target && target.data.type) {
+            transitionToExpanded(target.data.type);
+          }
+        }
+
+        if (event.sourceEvent) {
+          focusedNode = null;
+        }
+      });
+
+    const expandedZoom = d3
+      .zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.3, 3])
+      .on("zoom", (event) => {
+        if (stateRef.current.transitioning) return;
+
+        if (
+          event.sourceEvent &&
+          event.sourceEvent.type === "wheel" &&
+          event.transform.k < 0.7
+        ) {
+          transitionToOverview();
+          return;
+        }
+
+        expandedContainer.attr("transform", event.transform.toString());
+      });
+
+    overviewNodes.style("cursor", "pointer").on("click", (event, d) => {
       event.stopPropagation();
-      if (d.depth === 1) {
+      if (stateRef.current.transitioning) return;
+
+      if (d.depth === 1 && d.data.type) {
         if (focusedNode === d) {
           focusedNode = null;
-          resetZoom();
+          transitionToExpanded(d.data.type);
         } else {
           focusedNode = d;
-          zoomToNode(d);
+          const targetScale = (size * 0.85) / (d.r * 2);
+          const tx = width / 2 - d.x * targetScale;
+          const ty = height / 2 - d.y * targetScale;
+          const target = d3.zoomIdentity.translate(tx, ty).scale(targetScale);
+          svg
+            .transition()
+            .duration(750)
+            .ease(d3.easeCubicInOut)
+            .call(overviewZoom.transform, target);
         }
       } else if (d.depth === 2 && d.data.slug && d.data.type) {
         router.push(`/${TYPE_PLURALS[d.data.type]}/${d.data.slug}`);
       }
     });
 
-    nodeGroups
+    overviewNodes
       .select("circle")
       .on("mouseover", function () {
         d3.select(this)
@@ -257,23 +574,20 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
           .attr("stroke-width", d.depth === 1 ? 1.5 : 1);
       });
 
-    const zoom = d3
-      .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([initialScale * 0.8, initialScale * 25])
-      .on("zoom", (event) => {
-        container.attr("transform", event.transform.toString());
-        updateVisibility(event.transform);
-        if (event.sourceEvent) {
-          focusedNode = null;
-        }
-      });
-
-    svg.call(zoom);
     svg.on("click", () => {
-      focusedNode = null;
-      resetZoom();
+      if (stateRef.current.transitioning) return;
+      if (stateRef.current.mode === "overview") {
+        focusedNode = null;
+        svg
+          .transition()
+          .duration(750)
+          .ease(d3.easeCubicInOut)
+          .call(overviewZoom.transform, initialTransform);
+      }
     });
-    svg.call(zoom.transform, initialTransform);
+
+    svg.call(overviewZoom);
+    svg.call(overviewZoom.transform, initialTransform);
 
     return () => {
       svg.on(".zoom", null);
