@@ -166,16 +166,56 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
       .style("opacity", 0)
       .style("pointer-events", "none");
 
+    const spinner = svg
+      .append("g")
+      .attr("transform", `translate(${width / 2},${height / 2})`)
+      .style("opacity", 0);
+
+    spinner
+      .append("circle")
+      .attr("r", 16)
+      .attr("fill", "none")
+      .attr("stroke", "rgba(255,255,255,0.2)")
+      .attr("stroke-width", 2);
+
+    spinner
+      .append("path")
+      .attr("d", "M0,-16 A16,16 0 0,1 16,0")
+      .attr("fill", "none")
+      .attr("stroke", "white")
+      .attr("stroke-width", 2)
+      .attr("stroke-linecap", "round");
+
+    function animateSpinner() {
+      const path = spinner.select("path");
+      function spin() {
+        path
+          .attr("transform", "rotate(0)")
+          .transition()
+          .duration(800)
+          .ease(d3.easeLinear)
+          .attr("transform", "rotate(360)")
+          .on("end", spin);
+      }
+      spin();
+    }
+
     function navigateTo(url: string, color?: string) {
       overlay.attr("fill", color || "#0a0a12");
       overlay
         .transition()
-        .duration(350)
+        .duration(200)
         .ease(d3.easeCubicIn)
-        .style("opacity", 1)
-        .on("end", () => {
-          router.push(url);
-        });
+        .style("opacity", 1);
+
+      spinner
+        .transition()
+        .delay(150)
+        .duration(150)
+        .style("opacity", 1);
+
+      animateSpinner();
+      router.push(url);
     }
 
     const overviewContainer = svg.append("g").attr("class", "overview");
