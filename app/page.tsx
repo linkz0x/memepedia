@@ -5,7 +5,7 @@ import SearchBar from "@/components/SearchBar";
 export const revalidate = 60;
 
 export default async function HomePage() {
-  let entries;
+  let entries: Awaited<ReturnType<typeof getAllEntries>> = [];
   try {
     entries = await getAllEntries();
   } catch {

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { getEntryBySlug, getEntryByMemeSlug } from "@/lib/queries";
 import DetailCard from "@/components/DetailCard";
@@ -55,11 +56,12 @@ export default async function EntryPage({ params }: PageProps) {
         </Link>
 
         {entry.image_url && (
-          <div className="mb-8 rounded-2xl overflow-hidden glass">
-            <img
+          <div className="relative mb-8 rounded-2xl overflow-hidden glass h-64">
+            <Image
               src={entry.image_url}
               alt={entry.name}
-              className="w-full h-64 object-cover"
+              fill
+              className="object-cover"
             />
           </div>
         )}
