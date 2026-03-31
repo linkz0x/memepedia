@@ -200,20 +200,8 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
       spin();
     }
 
-    function navigateTo(url: string, color?: string) {
-      overlay.attr("fill", color || "#0a0a12");
-      overlay
-        .transition()
-        .duration(200)
-        .ease(d3.easeCubicIn)
-        .style("opacity", 1);
-
-      spinner
-        .transition()
-        .delay(150)
-        .duration(150)
-        .style("opacity", 1);
-
+    function navigateTo(url: string) {
+      spinner.style("opacity", 1);
       animateSpinner();
       router.push(url);
     }
@@ -437,8 +425,7 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
         .on("click", (event, d) => {
           event.stopPropagation();
           if (d.data.slug && d.data.type) {
-            const color = TYPE_COLORS[d.data.type];
-            navigateTo(`/${TYPE_PLURALS[d.data.type]}/${d.data.slug}`, color);
+            navigateTo(`/${TYPE_PLURALS[d.data.type]}/${d.data.slug}`);
           }
         });
     }
@@ -601,8 +588,7 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
             .call(overviewZoom.transform, target);
         }
       } else if (d.depth === 2 && d.data.slug && d.data.type) {
-        const color = TYPE_COLORS[d.data.type];
-        navigateTo(`/${TYPE_PLURALS[d.data.type]}/${d.data.slug}`, color);
+        navigateTo(`/${TYPE_PLURALS[d.data.type]}/${d.data.slug}`);
       }
     });
 
