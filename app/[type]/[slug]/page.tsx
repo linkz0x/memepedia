@@ -12,7 +12,7 @@ interface PageProps {
 }
 
 export default async function EntryPage({ params }: PageProps) {
-  const { slug } = await params;
+  const { type, slug } = await params;
   const entry = await getEntryBySlug(slug);
 
   if (!entry) notFound();
@@ -36,7 +36,7 @@ export default async function EntryPage({ params }: PageProps) {
 
       <div className="relative z-10 max-w-5xl mx-auto px-6 pt-8">
         <Link
-          href="/"
+          href={`/?expand=${type}`}
           className="inline-flex items-center gap-2 glass rounded-full px-4 py-2 text-sm text-white/60 hover:text-white/90 transition-colors mb-8"
         >
           <svg

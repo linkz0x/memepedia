@@ -1,10 +1,25 @@
 import { getAllEntries } from "@/lib/queries";
 import BubbleMap from "@/components/BubbleMap";
 import SearchBar from "@/components/SearchBar";
+import { EntryType } from "@/lib/types";
 
 export const revalidate = 60;
 
-export default async function HomePage() {
+const VALID_EXPAND_TYPES: Record<string, EntryType> = {
+  tokens: "token",
+  characters: "character",
+  moments: "moment",
+  memes: "meme",
+};
+
+interface HomePageProps {
+  searchParams: Promise<{ expand?: string }>;
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const { expand } = await searchParams;
+  const expandType = expand ? VALID_EXPAND_TYPES[expand] || null : null;
+
   let entries: Awaited<ReturnType<typeof getAllEntries>> = [];
   try {
     entries = await getAllEntries();
@@ -33,7 +48,7 @@ export default async function HomePage() {
 
       <div className="w-full h-full">
         {entries.length > 0 ? (
-          <BubbleMap entries={entries} />
+          <BubbleMap entries={entries} expandType={expandType} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="glass rounded-2xl p-8 text-center max-w-md">

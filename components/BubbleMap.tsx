@@ -7,6 +7,7 @@ import { Entry, EntryType, TYPE_LABELS, TYPE_COLORS } from "@/lib/types";
 
 interface BubbleMapProps {
   entries: Entry[];
+  expandType?: EntryType | null;
 }
 
 interface HierarchyNode {
@@ -63,7 +64,7 @@ const TYPE_PLURALS: Record<EntryType, string> = {
 
 type Mode = "overview" | "expanded";
 
-export default function BubbleMap({ entries }: BubbleMapProps) {
+export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const router = useRouter();
   const stateRef = useRef<{
@@ -166,43 +167,36 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
       .style("opacity", 0)
       .style("pointer-events", "none");
 
-    const spinner = svg
-      .append("g")
-      .attr("transform", `translate(${width / 2},${height / 2})`)
+    const spinnerFo = svg
+      .append("foreignObject")
+      .attr("x", width / 2 - 20)
+      .attr("y", height / 2 - 20)
+      .attr("width", 40)
+      .attr("height", 40)
       .style("opacity", 0);
 
-    spinner
-      .append("circle")
-      .attr("r", 16)
-      .attr("fill", "none")
-      .attr("stroke", "rgba(255,255,255,0.2)")
-      .attr("stroke-width", 2);
+    const spinnerDiv = spinnerFo
+      .append("xhtml:div")
+      .style("width", "32px")
+      .style("height", "32px")
+      .style("margin", "4px")
+      .style("border", "2px solid rgba(255,255,255,0.15)")
+      .style("border-top-color", "white")
+      .style("border-radius", "50%")
+      .style("animation", "memepedia-spin 0.6s linear infinite");
 
-    spinner
-      .append("path")
-      .attr("d", "M0,-16 A16,16 0 0,1 16,0")
-      .attr("fill", "none")
-      .attr("stroke", "white")
-      .attr("stroke-width", 2)
-      .attr("stroke-linecap", "round");
-
-    function animateSpinner() {
-      const path = spinner.select("path");
-      function spin() {
-        path
-          .attr("transform", "rotate(0)")
-          .transition()
-          .duration(800)
-          .ease(d3.easeLinear)
-          .attr("transform", "rotate(360)")
-          .on("end", spin);
-      }
-      spin();
+    if (!document.getElementById("memepedia-spinner-style")) {
+      const style = document.createElement("style");
+      style.id = "memepedia-spinner-style";
+      style.textContent =
+        "@keyframes memepedia-spin { to { transform: rotate(360deg); } }";
+      document.head.appendChild(style);
     }
 
+    void spinnerDiv;
+
     function navigateTo(url: string) {
-      spinner.style("opacity", 1);
-      animateSpinner();
+      spinnerFo.style("opacity", 1);
       router.push(url);
     }
 
@@ -624,10 +618,14 @@ export default function BubbleMap({ entries }: BubbleMapProps) {
     svg.call(overviewZoom);
     svg.call(overviewZoom.transform, initialTransform);
 
+    if (expandType) {
+      requestAnimationFrame(() => transitionToExpanded(expandType));
+    }
+
     return () => {
       svg.on(".zoom", null);
     };
-  }, [entries, router]);
+  }, [entries, router, expandType]);
 
   return (
     <svg
