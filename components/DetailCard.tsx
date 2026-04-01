@@ -46,14 +46,6 @@ function TokenMeta({ entry }: { entry: Entry }) {
           <p className="text-sm text-white/80">{entry.launch_date}</p>
         </div>
       )}
-      {entry.status && (
-        <div>
-          <p className="text-xs uppercase tracking-wider text-white/40 mb-1">
-            Status
-          </p>
-          <p className="text-sm capitalize text-white/80">{entry.status}</p>
-        </div>
-      )}
     </div>
   );
 }
@@ -75,14 +67,6 @@ function CharacterMeta({ entry }: { entry: Entry }) {
             Twitter
           </p>
           <p className="text-sm text-blue-300">@{entry.twitter_handle}</p>
-        </div>
-      )}
-      {entry.status && (
-        <div>
-          <p className="text-xs uppercase tracking-wider text-white/40 mb-1">
-            Status
-          </p>
-          <p className="text-sm capitalize text-white/80">{entry.status}</p>
         </div>
       )}
     </div>

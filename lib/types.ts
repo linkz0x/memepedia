@@ -1,7 +1,5 @@
 export type EntryType = "token" | "character" | "moment" | "meme";
 
-export type TokenStatus = "active" | "dead" | "rugged";
-export type CharacterStatus = "active" | "inactive" | "banned" | "unknown";
 export type MomentImpact = "bullish" | "bearish" | "chaotic" | "legendary";
 
 export interface Entry {
@@ -22,7 +20,6 @@ export interface Entry {
   ticker: string | null;
   ath_market_cap: number | null;
   launch_date: string | null;
-  status: string | null;
   meme_slug: string | null;
 
   // Character-specific

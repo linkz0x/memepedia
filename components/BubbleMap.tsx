@@ -64,6 +64,52 @@ const TYPE_PLURALS: Record<EntryType, string> = {
 
 type Mode = "overview" | "expanded";
 
+function wrapText(
+  textEl: d3.Selection<SVGTextElement, d3.HierarchyCircularNode<HierarchyNode>, SVGGElement, unknown>,
+  radius: number,
+  fontSize: number
+) {
+  textEl.each(function (d) {
+    const text = d3.select(this);
+    const name = d.data.name;
+    const maxWidth = radius * 1.6;
+    const charWidth = fontSize * 0.55;
+    const charsPerLine = Math.floor(maxWidth / charWidth);
+
+    if (name.length <= charsPerLine) {
+      text.text(name);
+      return;
+    }
+
+    text.text(null);
+    const words = name.split(/\s+/);
+    const lines: string[] = [];
+    let currentLine = "";
+
+    for (const word of words) {
+      const test = currentLine ? `${currentLine} ${word}` : word;
+      if (test.length > charsPerLine && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = test;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+
+    const lineHeight = fontSize * 1.2;
+    const startY = -((lines.length - 1) * lineHeight) / 2;
+
+    lines.forEach((line, i) => {
+      text
+        .append("tspan")
+        .attr("x", 0)
+        .attr("dy", i === 0 ? startY : lineHeight)
+        .text(line);
+    });
+  });
+}
+
 export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const router = useRouter();
@@ -249,7 +295,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       (d) => (d.depth === 2 ? "none" : "all")
     );
 
-    overviewNodes
+    const overviewText = overviewNodes
       .append("text")
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "central")
@@ -262,8 +308,14 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
           return `${Math.max(12, Math.min(d.r * 0.25, 28))}px`;
         }
         return `${Math.max(8, Math.min(d.r * 0.35, 14))}px`;
-      })
-      .text((d) => d.data.name);
+      });
+
+    overviewText.each(function (d) {
+      const fontSize = d.depth === 1
+        ? Math.max(12, Math.min(d.r * 0.25, 28))
+        : Math.max(8, Math.min(d.r * 0.35, 14));
+      wrapText(d3.select(this.parentNode as SVGGElement).select("text"), d.r, fontSize);
+    });
 
     const initialScale = (size * 0.9) / (root.r * 2);
     const initialX = width / 2 - root.x * initialScale;
@@ -390,8 +442,15 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
         .style("opacity", 0)
         .style("font-size", (d) =>
           `${Math.max(10, Math.min(d.r * 0.28, 18))}px`
-        )
-        .text((d) => d.data.name)
+        );
+
+      bubbles.each(function (d) {
+        const fontSize = Math.max(10, Math.min(d.r * 0.28, 18));
+        wrapText(d3.select(this).select("text"), d.r, fontSize);
+      });
+
+      bubbles
+        .select("text")
         .transition()
         .duration(400)
         .delay((_, i) => 200 + i * 60)
