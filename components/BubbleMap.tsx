@@ -167,15 +167,23 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       .style("opacity", 0)
       .style("pointer-events", "none");
 
+    if (!document.getElementById("memepedia-spinner-style")) {
+      const style = document.createElement("style");
+      style.id = "memepedia-spinner-style";
+      style.textContent =
+        "@keyframes memepedia-spin { to { transform: rotate(360deg); } }";
+      document.head.appendChild(style);
+    }
+
     const spinnerFo = svg
       .append("foreignObject")
       .attr("x", width / 2 - 20)
       .attr("y", height / 2 - 20)
       .attr("width", 40)
       .attr("height", 40)
-      .style("opacity", 0);
+      .style("display", "none");
 
-    const spinnerDiv = spinnerFo
+    spinnerFo
       .append("xhtml:div")
       .style("width", "32px")
       .style("height", "32px")
@@ -185,18 +193,8 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       .style("border-radius", "50%")
       .style("animation", "memepedia-spin 0.6s linear infinite");
 
-    if (!document.getElementById("memepedia-spinner-style")) {
-      const style = document.createElement("style");
-      style.id = "memepedia-spinner-style";
-      style.textContent =
-        "@keyframes memepedia-spin { to { transform: rotate(360deg); } }";
-      document.head.appendChild(style);
-    }
-
-    void spinnerDiv;
-
     function navigateTo(url: string) {
-      spinnerFo.style("opacity", 1);
+      spinnerFo.style("display", "block");
       router.push(url);
     }
 
@@ -515,8 +513,6 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
 
     // --- ZOOM BEHAVIORS ---
 
-    let focusedNode: d3.HierarchyCircularNode<HierarchyNode> | null = null;
-
     const overviewZoom = d3
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([initialScale * 0.8, initialScale * 25])
@@ -537,10 +533,6 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
             transitionToExpanded(target.data.type);
           }
         }
-
-        if (event.sourceEvent) {
-          focusedNode = null;
-        }
       });
 
     const expandedZoom = d3
@@ -549,11 +541,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       .on("zoom", (event) => {
         if (stateRef.current.transitioning) return;
 
-        if (
-          event.sourceEvent &&
-          event.sourceEvent.type === "wheel" &&
-          event.transform.k < 0.7
-        ) {
+        if (event.sourceEvent && event.transform.k < 0.7) {
           transitionToOverview();
           return;
         }
@@ -566,21 +554,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       if (stateRef.current.transitioning) return;
 
       if (d.depth === 1 && d.data.type) {
-        if (focusedNode === d) {
-          focusedNode = null;
-          transitionToExpanded(d.data.type);
-        } else {
-          focusedNode = d;
-          const targetScale = (size * 0.85) / (d.r * 2);
-          const tx = width / 2 - d.x * targetScale;
-          const ty = height / 2 - d.y * targetScale;
-          const target = d3.zoomIdentity.translate(tx, ty).scale(targetScale);
-          svg
-            .transition()
-            .duration(750)
-            .ease(d3.easeCubicInOut)
-            .call(overviewZoom.transform, target);
-        }
+        transitionToExpanded(d.data.type);
       } else if (d.depth === 2 && d.data.slug && d.data.type) {
         navigateTo(`/${TYPE_PLURALS[d.data.type]}/${d.data.slug}`);
       }
@@ -606,7 +580,6 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
     svg.on("click", () => {
       if (stateRef.current.transitioning) return;
       if (stateRef.current.mode === "overview") {
-        focusedNode = null;
         svg
           .transition()
           .duration(750)

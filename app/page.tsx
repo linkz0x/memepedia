@@ -29,21 +29,22 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <main className="relative w-full h-dvh overflow-hidden">
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 w-full max-w-md px-4">
-        <SearchBar />
-      </div>
-
-      <div className="absolute top-6 left-6 z-20">
-        <h1 className="text-xl font-semibold text-white/90 text-glow">
-          Memepedia
-        </h1>
-        <p className="text-xs text-white/40 mt-0.5">
-          The Wikipedia of Meme Coins
-        </p>
-        <p
-          id="category-label"
-          className="text-sm font-medium mt-2 transition-all duration-400 opacity-0"
-        />
+      <div className="absolute top-4 left-4 right-4 z-20 flex items-start gap-4 sm:gap-6">
+        <div className="shrink-0">
+          <h1 className="text-lg sm:text-xl font-semibold text-white/90 text-glow">
+            Memepedia
+          </h1>
+          <p className="text-[10px] sm:text-xs text-white/40 mt-0.5">
+            The Wikipedia of Meme Coins
+          </p>
+          <p
+            id="category-label"
+            className="text-xs sm:text-sm font-medium mt-1.5 transition-all duration-400 opacity-0"
+          />
+        </div>
+        <div className="flex-1 max-w-md">
+          <SearchBar />
+        </div>
       </div>
 
       <div className="w-full h-full">
