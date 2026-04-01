@@ -64,50 +64,47 @@ const TYPE_PLURALS: Record<EntryType, string> = {
 
 type Mode = "overview" | "expanded";
 
-function wrapText(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  textEl: d3.Selection<SVGTextElement, any, any, any>,
+function applyWrappedText(
+  textEl: SVGTextElement,
+  name: string,
   radius: number,
   fontSize: number
 ) {
-  textEl.each(function (d: HierarchyNode) {
-    const text = d3.select(this);
-    const name = d.name;
-    const maxWidth = radius * 1.6;
-    const charWidth = fontSize * 0.55;
-    const charsPerLine = Math.floor(maxWidth / charWidth);
+  const text = d3.select(textEl);
+  const maxWidth = radius * 1.6;
+  const charWidth = fontSize * 0.55;
+  const charsPerLine = Math.floor(maxWidth / charWidth);
 
-    if (name.length <= charsPerLine) {
-      text.text(name);
-      return;
+  if (name.length <= charsPerLine) {
+    text.text(name);
+    return;
+  }
+
+  text.text(null);
+  const words = name.split(/\s+/);
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    const test = currentLine ? `${currentLine} ${word}` : word;
+    if (test.length > charsPerLine && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = test;
     }
+  }
+  if (currentLine) lines.push(currentLine);
 
-    text.text(null);
-    const words = name.split(/\s+/);
-    const lines: string[] = [];
-    let currentLine = "";
+  const lineHeight = fontSize * 1.2;
+  const startY = -((lines.length - 1) * lineHeight) / 2;
 
-    for (const word of words) {
-      const test = currentLine ? `${currentLine} ${word}` : word;
-      if (test.length > charsPerLine && currentLine) {
-        lines.push(currentLine);
-        currentLine = word;
-      } else {
-        currentLine = test;
-      }
-    }
-    if (currentLine) lines.push(currentLine);
-
-    const lineHeight = fontSize * 1.2;
-    const startY = -((lines.length - 1) * lineHeight) / 2;
-
-    lines.forEach((line, i) => {
-      text
-        .append("tspan")
-        .attr("x", 0)
-        .attr("dy", i === 0 ? startY : lineHeight)
-        .text(line);
-    });
+  lines.forEach((line, i) => {
+    text
+      .append("tspan")
+      .attr("x", 0)
+      .attr("dy", i === 0 ? startY : lineHeight)
+      .text(line);
   });
 }
 
@@ -315,7 +312,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       const fontSize = d.depth === 1
         ? Math.max(12, Math.min(d.r * 0.25, 28))
         : Math.max(8, Math.min(d.r * 0.35, 14));
-      wrapText(d3.select(this as SVGTextElement), d.r, fontSize);
+      applyWrappedText(this as SVGTextElement, d.data.name, d.r, fontSize);
     });
 
     const initialScale = (size * 0.9) / (root.r * 2);
@@ -447,8 +444,8 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
 
       bubbles.each(function (d) {
         const fontSize = Math.max(10, Math.min(d.r * 0.28, 18));
-        const textEl = d3.select(this as SVGGElement).select<SVGTextElement>("text");
-        wrapText(textEl, d.r, fontSize);
+        const textEl = (this as SVGGElement).querySelector("text");
+        if (textEl) applyWrappedText(textEl, d.data.name, d.r, fontSize);
       });
 
       bubbles
