@@ -65,13 +65,14 @@ const TYPE_PLURALS: Record<EntryType, string> = {
 type Mode = "overview" | "expanded";
 
 function wrapText(
-  textEl: d3.Selection<SVGTextElement, d3.HierarchyCircularNode<HierarchyNode>, SVGGElement, unknown>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  textEl: d3.Selection<SVGTextElement, any, any, any>,
   radius: number,
   fontSize: number
 ) {
-  textEl.each(function (d) {
+  textEl.each(function (d: HierarchyNode) {
     const text = d3.select(this);
-    const name = d.data.name;
+    const name = d.name;
     const maxWidth = radius * 1.6;
     const charWidth = fontSize * 0.55;
     const charsPerLine = Math.floor(maxWidth / charWidth);
@@ -314,7 +315,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       const fontSize = d.depth === 1
         ? Math.max(12, Math.min(d.r * 0.25, 28))
         : Math.max(8, Math.min(d.r * 0.35, 14));
-      wrapText(d3.select(this.parentNode as SVGGElement).select("text"), d.r, fontSize);
+      wrapText(d3.select(this as SVGTextElement), d.r, fontSize);
     });
 
     const initialScale = (size * 0.9) / (root.r * 2);
@@ -446,7 +447,8 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
 
       bubbles.each(function (d) {
         const fontSize = Math.max(10, Math.min(d.r * 0.28, 18));
-        wrapText(d3.select(this).select("text"), d.r, fontSize);
+        const textEl = d3.select(this as SVGGElement).select<SVGTextElement>("text");
+        wrapText(textEl, d.r, fontSize);
       });
 
       bubbles
