@@ -279,18 +279,12 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       router.push(url);
     }
 
-    const overviewContainer = svg
-      .append("g")
-      .attr("class", "overview")
-      .style("will-change", "transform")
-      .style("transform-origin", "0 0");
+    const overviewContainer = svg.append("g").attr("class", "overview");
     const expandedContainer = svg
       .append("g")
       .attr("class", "expanded")
       .style("opacity", 0)
-      .style("pointer-events", "none")
-      .style("will-change", "transform")
-      .style("transform-origin", "0 0");
+      .style("pointer-events", "none");
 
     // --- OVERVIEW MODE ---
 
