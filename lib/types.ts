@@ -28,6 +28,7 @@ export interface Entry {
   ath_market_cap: number | null;
   launch_date: string | null;
   meme_slug: string | null;
+  contract_address: string | null;
 
   known_for: string | null;
   twitter_handle: string | null;

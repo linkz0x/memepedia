@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Entry } from "@/lib/types";
 import GlassCard from "./GlassCard";
 
@@ -46,7 +47,37 @@ function TokenMeta({ entry }: { entry: Entry }) {
           <p className="text-sm text-white/80">{entry.launch_date}</p>
         </div>
       )}
+      {entry.contract_address && (
+        <div className="col-span-2">
+          <p className="text-xs uppercase tracking-wider text-white/40 mb-1">
+            Contract
+          </p>
+          <ContractAddress address={entry.contract_address} />
+        </div>
+      )}
     </div>
+  );
+}
+
+function ContractAddress({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    await navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <button
+      onClick={copy}
+      className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-white/80 transition-colors w-full text-left"
+    >
+      <span className="truncate flex-1">{address}</span>
+      <span className="text-[10px] text-white/40 shrink-0 uppercase tracking-wider">
+        {copied ? "Copied" : "Copy"}
+      </span>
+    </button>
   );
 }
 

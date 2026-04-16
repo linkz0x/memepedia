@@ -109,6 +109,7 @@ export async function submitEntry(formData: FormData) {
     entry.ath_market_cap = formData.get("ath_market_cap")
       ? Number(formData.get("ath_market_cap"))
       : null;
+    entry.contract_address = formData.get("contract_address") || null;
   } else if (type === "character") {
     entry.known_for = formData.get("known_for") || null;
     entry.twitter_handle = formData.get("twitter_handle") || null;

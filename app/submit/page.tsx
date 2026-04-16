@@ -342,6 +342,16 @@ export default function SubmitPage() {
                   />
                 </div>
               </div>
+              <div>
+                <label className="block text-xs text-white/40 mb-1.5">
+                  Contract Address
+                </label>
+                <input
+                  name="contract_address"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/90 outline-none focus:border-white/20 transition-colors font-mono"
+                  placeholder="0x... or mint address"
+                />
+              </div>
             </div>
           )}
 

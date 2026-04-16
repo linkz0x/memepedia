@@ -187,6 +187,14 @@ export default function ReviewForm({ entry }: { entry: Entry }) {
                   : null
               }
             />
+            {entry.contract_address && (
+              <div className="col-span-2">
+                <p className="text-[10px] text-white/30">Contract</p>
+                <p className="text-xs text-white/60 font-mono break-all">
+                  {entry.contract_address}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
