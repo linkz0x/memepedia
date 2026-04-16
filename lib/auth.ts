@@ -1,4 +1,4 @@
-import { createServerSupabase } from "./supabase";
+import { createServerSupabase } from "./supabase-server";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
 

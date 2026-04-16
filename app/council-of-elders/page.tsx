@@ -1,4 +1,4 @@
-import { createAdminSupabase } from "@/lib/supabase";
+import { createAdminSupabase } from "@/lib/supabase-server";
 import { Entry } from "@/lib/types";
 import { TYPE_COLORS } from "@/lib/types";
 import Link from "next/link";

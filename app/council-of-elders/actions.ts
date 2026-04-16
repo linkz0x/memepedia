@@ -1,6 +1,6 @@
 "use server";
 
-import { createAdminSupabase } from "@/lib/supabase";
+import { createAdminSupabase } from "@/lib/supabase-server";
 import { isAdmin } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 

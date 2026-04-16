@@ -1,6 +1,6 @@
 "use server";
 
-import { createAdminSupabase } from "@/lib/supabase";
+import { createAdminSupabase } from "@/lib/supabase-server";
 import { headers } from "next/headers";
 
 function generateSlug(name: string): string {

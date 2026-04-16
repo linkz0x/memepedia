@@ -1,4 +1,4 @@
-import { createAdminSupabase } from "@/lib/supabase";
+import { createAdminSupabase } from "@/lib/supabase-server";
 import { Entry } from "@/lib/types";
 import { notFound } from "next/navigation";
 import ReviewForm from "./ReviewForm";
