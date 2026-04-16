@@ -49,6 +49,22 @@ export async function deleteEntry(id: string) {
   if (!(await isAdmin())) return { error: "Unauthorized" };
 
   const supabase = createAdminSupabase();
+
+  const { data: entry } = await supabase
+    .from("entries")
+    .select("image_url")
+    .eq("id", id)
+    .single();
+
+  if (entry?.image_url) {
+    const marker = "/entry-images/";
+    const idx = entry.image_url.indexOf(marker);
+    if (idx !== -1) {
+      const path = entry.image_url.slice(idx + marker.length);
+      await supabase.storage.from("entry-images").remove([path]);
+    }
+  }
+
   const { error } = await supabase.from("entries").delete().eq("id", id);
 
   if (error) return { error: error.message };
