@@ -5,6 +5,7 @@ import { submitEntry } from "./actions";
 import Link from "next/link";
 import { TYPE_COLORS } from "@/lib/types";
 import type { EntryType } from "@/lib/types";
+import Select from "@/components/Select";
 
 const TYPES: { value: EntryType; label: string }[] = [
   { value: "token", label: "Token" },
@@ -13,8 +14,25 @@ const TYPES: { value: EntryType; label: string }[] = [
   { value: "meme", label: "Meme" },
 ];
 
-const CHAINS = ["Ethereum", "Solana", "Base", "BSC", "Other"];
-const IMPACTS = ["bullish", "bearish", "chaotic", "legendary"];
+const CHAIN_OPTIONS = [
+  { value: "Ethereum", label: "Ethereum" },
+  { value: "Solana", label: "Solana" },
+  { value: "Base", label: "Base" },
+  { value: "BSC", label: "BSC" },
+  { value: "Other", label: "Other" },
+];
+
+const IMPACT_OPTIONS = [
+  { value: "bullish", label: "Bullish" },
+  { value: "bearish", label: "Bearish" },
+  { value: "chaotic", label: "Chaotic" },
+  { value: "legendary", label: "Legendary" },
+];
+
+const ACTIVE_OPTIONS = [
+  { value: "true", label: "Yes" },
+  { value: "false", label: "No" },
+];
 
 export default function SubmitPage() {
   const [type, setType] = useState<EntryType>("token");
@@ -22,6 +40,9 @@ export default function SubmitPage() {
   const [tagInput, setTagInput] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [chain, setChain] = useState("");
+  const [impact, setImpact] = useState("");
+  const [stillActive, setStillActive] = useState("true");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{
     success?: boolean;
@@ -289,17 +310,13 @@ export default function SubmitPage() {
                   <label className="block text-xs text-white/40 mb-1.5">
                     Chain
                   </label>
-                  <select
+                  <Select
                     name="chain"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/90 outline-none focus:border-white/20 transition-colors"
-                  >
-                    <option value="">Select chain</option>
-                    {CHAINS.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
+                    value={chain}
+                    onChange={setChain}
+                    options={CHAIN_OPTIONS}
+                    placeholder="Select chain"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -382,17 +399,13 @@ export default function SubmitPage() {
                   <label className="block text-xs text-white/40 mb-1.5">
                     Impact
                   </label>
-                  <select
+                  <Select
                     name="impact"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/90 outline-none focus:border-white/20 transition-colors"
-                  >
-                    <option value="">Select impact</option>
-                    {IMPACTS.map((i) => (
-                      <option key={i} value={i}>
-                        {i.charAt(0).toUpperCase() + i.slice(1)}
-                      </option>
-                    ))}
-                  </select>
+                    value={impact}
+                    onChange={setImpact}
+                    options={IMPACT_OPTIONS}
+                    placeholder="Select impact"
+                  />
                 </div>
               </div>
             </div>
@@ -431,13 +444,12 @@ export default function SubmitPage() {
                   <label className="block text-xs text-white/40 mb-1.5">
                     Still Active?
                   </label>
-                  <select
+                  <Select
                     name="still_active"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/90 outline-none focus:border-white/20 transition-colors"
-                  >
-                    <option value="true">Yes</option>
-                    <option value="false">No</option>
-                  </select>
+                    value={stillActive}
+                    onChange={setStillActive}
+                    options={ACTIVE_OPTIONS}
+                  />
                 </div>
               </div>
             </div>
@@ -452,9 +464,10 @@ export default function SubmitPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full glass-strong rounded-xl py-3 text-sm font-medium text-white/80 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full glass-strong rounded-xl py-3 text-sm font-medium text-white/80 hover:text-white transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {submitting ? "Submitting..." : "Submit for Review"}
+            {submitting && <span className="spinner" />}
+            {submitting ? "Submitting" : "Submit for Review"}
           </button>
         </form>
       </div>
