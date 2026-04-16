@@ -33,8 +33,7 @@ body {
     );
   color: #e2e8f0;
   font-family: "Inter", system-ui, sans-serif;
-  overflow: hidden;
-  height: 100dvh;
+  min-height: 100dvh;
 }
 
 .glass {

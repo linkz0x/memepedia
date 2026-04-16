@@ -1,5 +1,7 @@
 export type EntryType = "token" | "character" | "moment" | "meme";
 
+export type ReviewStatus = "pending" | "approved" | "rejected";
+
 export type MomentImpact = "bullish" | "bearish" | "chaotic" | "legendary";
 
 export interface Entry {
@@ -12,25 +14,27 @@ export interface Entry {
   image_url: string | null;
   significance: number;
   tags: string[];
+  status: string | null;
+  review_status: ReviewStatus;
+  submitted_by_email: string | null;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
   created_at: string;
   updated_at: string;
 
-  // Token-specific
   chain: string | null;
   ticker: string | null;
   ath_market_cap: number | null;
   launch_date: string | null;
   meme_slug: string | null;
 
-  // Character-specific
   known_for: string | null;
   twitter_handle: string | null;
 
-  // Moment-specific
   moment_date: string | null;
   impact: string | null;
 
-  // Meme-specific
   origin: string | null;
   origin_date: string | null;
   still_active: boolean | null;

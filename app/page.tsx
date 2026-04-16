@@ -2,6 +2,7 @@ import { getAllEntries } from "@/lib/queries";
 import BubbleMap from "@/components/BubbleMap";
 import SearchBar from "@/components/SearchBar";
 import { EntryType } from "@/lib/types";
+import Link from "next/link";
 
 export const revalidate = 60;
 
@@ -32,6 +33,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 w-full max-w-md px-4 hidden sm:block">
         <SearchBar />
       </div>
+
+      <Link
+        href="/submit"
+        className="absolute top-6 right-6 z-20 glass rounded-full px-4 py-2 text-xs font-medium text-white/50 hover:text-white/80 transition-colors hidden sm:block"
+      >
+        + Request
+      </Link>
 
       <div className="absolute top-4 left-4 right-4 z-20 flex items-start gap-3 sm:block sm:left-6 sm:right-auto sm:top-6">
         <div className="shrink-0">

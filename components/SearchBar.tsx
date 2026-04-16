@@ -20,6 +20,7 @@ export default function SearchBar() {
     const { data } = await supabase
       .from("entries")
       .select("*")
+      .eq("review_status", "approved")
       .or(`name.ilike.%${q}%,headline.ilike.%${q}%`)
       .order("significance", { ascending: false })
       .limit(8);

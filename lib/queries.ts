@@ -5,6 +5,7 @@ export async function getAllEntries(): Promise<Entry[]> {
   const { data, error } = await supabase
     .from("entries")
     .select("*")
+    .eq("review_status", "approved")
     .order("significance", { ascending: false });
 
   if (error) throw error;
@@ -15,6 +16,7 @@ export async function getEntriesByType(type: EntryType): Promise<Entry[]> {
   const { data, error } = await supabase
     .from("entries")
     .select("*")
+    .eq("review_status", "approved")
     .eq("type", type)
     .order("significance", { ascending: false });
 
@@ -26,6 +28,7 @@ export async function getEntryBySlug(slug: string): Promise<Entry | null> {
   const { data, error } = await supabase
     .from("entries")
     .select("*")
+    .eq("review_status", "approved")
     .eq("slug", slug)
     .single();
 
@@ -40,6 +43,7 @@ export async function searchEntries(query: string): Promise<Entry[]> {
   const { data, error } = await supabase
     .from("entries")
     .select("*")
+    .eq("review_status", "approved")
     .or(`name.ilike.%${query}%,headline.ilike.%${query}%,tags.cs.{${query}}`)
     .order("significance", { ascending: false })
     .limit(10);
@@ -54,6 +58,7 @@ export async function getEntryByMemeSlug(
   const { data, error } = await supabase
     .from("entries")
     .select("*")
+    .eq("review_status", "approved")
     .eq("type", "meme")
     .eq("slug", memeSlug)
     .single();
