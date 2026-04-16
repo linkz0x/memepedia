@@ -54,14 +54,6 @@ body {
     0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
-@media (max-width: 639px) {
-  .glass,
-  .glass-strong {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    background: rgba(20, 20, 30, 0.7);
-  }
-}
 
 .bubble-glow {
   filter: drop-shadow(0 0 20px var(--glow-purple));
