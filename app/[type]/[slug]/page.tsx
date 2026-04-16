@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -11,6 +12,32 @@ export const revalidate = 60;
 
 interface PageProps {
   params: Promise<{ type: string; slug: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const entry = await getEntryBySlug(slug);
+
+  if (!entry) return { title: "Not Found" };
+
+  const images = entry.image_url ? [entry.image_url] : undefined;
+
+  return {
+    title: entry.name,
+    description: entry.headline,
+    openGraph: {
+      type: "article",
+      title: `${entry.name} — Memepedia`,
+      description: entry.headline,
+      images,
+    },
+    twitter: {
+      card: entry.image_url ? "summary_large_image" : "summary",
+      title: `${entry.name} — Memepedia`,
+      description: entry.headline,
+      images,
+    },
+  };
 }
 
 export default async function EntryPage({ params }: PageProps) {
