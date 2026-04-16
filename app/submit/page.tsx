@@ -20,6 +20,7 @@ export default function SubmitPage() {
   const [type, setType] = useState<EntryType>("token");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{
@@ -46,6 +47,7 @@ export default function SubmitPage() {
         setResult({ error: "Image must be under 2MB." });
         return;
       }
+      setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
     }
   }
@@ -55,6 +57,11 @@ export default function SubmitPage() {
     setResult(null);
     formData.set("type", type);
     formData.set("tags", tags.join(","));
+    if (imageFile) {
+      formData.set("image", imageFile);
+    } else {
+      formData.delete("image");
+    }
     const res = await submitEntry(formData);
     setResult(res);
     setSubmitting(false);
@@ -184,11 +191,8 @@ export default function SubmitPage() {
                     <button
                       type="button"
                       onClick={() => {
+                        setImageFile(null);
                         setImagePreview(null);
-                        const input = document.querySelector(
-                          'input[name="image"]'
-                        ) as HTMLInputElement;
-                        if (input) input.value = "";
                       }}
                       className="absolute top-2 right-2 bg-black/60 rounded-full w-7 h-7 flex items-center justify-center text-white/70 hover:text-white transition-colors"
                     >
