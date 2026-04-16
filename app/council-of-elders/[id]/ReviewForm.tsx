@@ -12,6 +12,7 @@ export default function ReviewForm({ entry }: { entry: Entry }) {
   const [name, setName] = useState(entry.name);
   const [headline, setHeadline] = useState(entry.headline);
   const [description, setDescription] = useState(entry.description);
+  const [sourceUrl, setSourceUrl] = useState(entry.source_url || "");
   const [reviewNote, setReviewNote] = useState(entry.review_note || "");
   const [loading, setLoading] = useState<string | null>(null);
 
@@ -21,6 +22,7 @@ export default function ReviewForm({ entry }: { entry: Entry }) {
       name,
       headline,
       description,
+      source_url: sourceUrl || null,
       significance,
     });
     if (result.success) {
@@ -137,6 +139,19 @@ export default function ReviewForm({ entry }: { entry: Entry }) {
             onChange={(e) => setDescription(e.target.value)}
             rows={6}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/90 outline-none focus:border-white/20 transition-colors resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs text-white/40 mb-1.5">
+            Source URL
+          </label>
+          <input
+            type="url"
+            value={sourceUrl}
+            onChange={(e) => setSourceUrl(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/90 outline-none focus:border-white/20 transition-colors"
+            placeholder="https://..."
           />
         </div>
 

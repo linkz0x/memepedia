@@ -12,6 +12,7 @@ export interface Entry {
   headline: string;
   description: string;
   image_url: string | null;
+  source_url: string | null;
   significance: number;
   tags: string[];
   status: string | null;

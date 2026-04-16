@@ -276,6 +276,18 @@ export default function SubmitPage() {
 
             <div>
               <label className="block text-xs text-white/40 mb-1.5">
+                Source URL (optional)
+              </label>
+              <input
+                name="source_url"
+                type="url"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/90 outline-none focus:border-white/20 transition-colors"
+                placeholder="Tweet, article, video, DexScreener..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-white/40 mb-1.5">
                 Your Email (optional)
               </label>
               <input

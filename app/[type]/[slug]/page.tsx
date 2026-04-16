@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getEntryBySlug, getEntryByMemeSlug } from "@/lib/queries";
 import DetailCard from "@/components/DetailCard";
 import GlassCard from "@/components/GlassCard";
+import SourceLink from "@/components/SourceLink";
 
 export const revalidate = 60;
 
@@ -78,6 +79,12 @@ export default async function EntryPage({ params }: PageProps) {
                 {entry.description}
               </p>
             </GlassCard>
+
+            {entry.source_url && (
+              <div className="mb-8">
+                <SourceLink url={entry.source_url} />
+              </div>
+            )}
 
             {originMeme && (
               <div className="mb-8">

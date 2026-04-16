@@ -95,6 +95,7 @@ export async function submitEntry(formData: FormData) {
     headline,
     description,
     image_url: imageUrl,
+    source_url: formData.get("source_url") || null,
     significance: 1,
     tags,
     review_status: "pending",
