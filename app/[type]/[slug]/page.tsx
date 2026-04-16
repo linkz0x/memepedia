@@ -5,6 +5,7 @@ import { getEntryBySlug, getEntryByMemeSlug } from "@/lib/queries";
 import DetailCard from "@/components/DetailCard";
 import GlassCard from "@/components/GlassCard";
 import SourceLink from "@/components/SourceLink";
+import TwitterHandle from "@/components/TwitterHandle";
 
 export const revalidate = 60;
 
@@ -68,7 +69,13 @@ export default async function EntryPage({ params }: PageProps) {
               {entry.name}
             </h1>
 
-            <p className="text-lg text-white/50 mb-8">{entry.headline}</p>
+            <p className="text-lg text-white/50 mb-5">{entry.headline}</p>
+
+            {entry.type === "character" && (
+              <div className="mb-8">
+                <TwitterHandle handle={entry.twitter_handle} />
+              </div>
+            )}
 
             <div className="mb-8">
               <DetailCard entry={entry} />

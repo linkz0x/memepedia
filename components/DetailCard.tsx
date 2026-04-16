@@ -92,14 +92,6 @@ function CharacterMeta({ entry }: { entry: Entry }) {
           <p className="text-sm text-white/80">{entry.known_for}</p>
         </div>
       )}
-      {entry.twitter_handle && (
-        <div>
-          <p className="text-xs uppercase tracking-wider text-white/40 mb-1">
-            Twitter
-          </p>
-          <p className="text-sm text-blue-300">@{entry.twitter_handle}</p>
-        </div>
-      )}
     </div>
   );
 }
