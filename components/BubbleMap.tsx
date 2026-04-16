@@ -64,42 +64,78 @@ const TYPE_PLURALS: Record<EntryType, string> = {
 
 type Mode = "overview" | "expanded";
 
+function wrapIntoLines(name: string, charsPerLine: number): string[] {
+  if (charsPerLine < 1) return [name];
+  if (name.length <= charsPerLine) return [name];
+
+  const lines: string[] = [];
+  const words = name.split(/\s+/);
+  let currentLine = "";
+
+  for (const word of words) {
+    if (word.length > charsPerLine) {
+      if (currentLine) {
+        lines.push(currentLine);
+        currentLine = "";
+      }
+      let remaining = word;
+      while (remaining.length > charsPerLine) {
+        lines.push(remaining.slice(0, charsPerLine));
+        remaining = remaining.slice(charsPerLine);
+      }
+      currentLine = remaining;
+    } else {
+      const test = currentLine ? `${currentLine} ${word}` : word;
+      if (test.length > charsPerLine && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = test;
+      }
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
 function applyWrappedText(
   textEl: SVGTextElement,
   name: string,
   radius: number,
-  fontSize: number
+  maxFontSize: number,
+  minFontSize: number = 7
 ) {
   const text = d3.select(textEl);
-  const maxWidth = radius * 1.6;
-  const charWidth = fontSize * 0.55;
-  const charsPerLine = Math.floor(maxWidth / charWidth);
+  const maxWidth = radius * 1.75;
+  const maxHeight = radius * 1.75;
 
-  if (name.length <= charsPerLine) {
-    text.text(name);
-    return;
-  }
+  let chosenLines: string[] = [name];
+  let chosenFontSize = minFontSize;
+  const startSize = Math.max(minFontSize, Math.floor(maxFontSize));
 
-  text.text(null);
-  const words = name.split(/\s+/);
-  const lines: string[] = [];
-  let currentLine = "";
+  for (let fs = startSize; fs >= minFontSize; fs -= 1) {
+    const charWidth = fs * 0.6;
+    const charsPerLine = Math.max(1, Math.floor(maxWidth / charWidth));
+    const lines = wrapIntoLines(name, charsPerLine);
+    const totalHeight = lines.length * fs * 1.15;
 
-  for (const word of words) {
-    const test = currentLine ? `${currentLine} ${word}` : word;
-    if (test.length > charsPerLine && currentLine) {
-      lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = test;
+    if (totalHeight <= maxHeight) {
+      chosenLines = lines;
+      chosenFontSize = fs;
+      break;
+    }
+
+    if (fs === minFontSize) {
+      chosenLines = lines;
+      chosenFontSize = fs;
     }
   }
-  if (currentLine) lines.push(currentLine);
 
-  const lineHeight = fontSize * 1.2;
-  const startY = -((lines.length - 1) * lineHeight) / 2;
+  text.text(null).style("font-size", `${chosenFontSize}px`);
+  const lineHeight = chosenFontSize * 1.15;
+  const startY = -((chosenLines.length - 1) * lineHeight) / 2;
 
-  lines.forEach((line, i) => {
+  chosenLines.forEach((line, i) => {
     text
       .append("tspan")
       .attr("x", 0)
@@ -253,7 +289,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
 
     const hierarchy = d3
       .hierarchy(buildHierarchy(entries))
-      .sum((d) => d.significance || 1)
+      .sum((d) => (d.significance ? d.significance * 0.05 + 1 : 1))
       .sort((a, b) => (b.value || 0) - (a.value || 0));
 
     const pack = d3
@@ -381,7 +417,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
 
       const catHierarchy = d3
         .hierarchy(buildCategoryHierarchy(entries, type))
-        .sum((d) => d.significance || 1)
+        .sum((d) => (d.significance ? d.significance * 0.05 + 1 : 1))
         .sort((a, b) => (b.value || 0) - (a.value || 0));
 
       const expandPack = d3
