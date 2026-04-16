@@ -2,15 +2,15 @@ import { createServerSupabase } from "./supabase-server";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
 
-export async function getSession() {
+export async function getUser() {
   const supabase = await createServerSupabase();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return session;
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
 }
 
 export async function isAdmin() {
-  const session = await getSession();
-  return session?.user?.email === ADMIN_EMAIL;
+  const user = await getUser();
+  return user?.email === ADMIN_EMAIL;
 }

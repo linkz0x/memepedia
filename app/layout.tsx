@@ -8,20 +8,20 @@ const siteDescription =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Memepedia — The Wikipedia of Meme Coins",
-    template: "%s — Memepedia",
+    default: "Memepedia - The Wikipedia of Meme Coins",
+    template: "%s - Memepedia",
   },
   description: siteDescription,
   openGraph: {
     type: "website",
     url: siteUrl,
     siteName: "Memepedia",
-    title: "Memepedia — The Wikipedia of Meme Coins",
+    title: "Memepedia - The Wikipedia of Meme Coins",
     description: siteDescription,
   },
   twitter: {
     card: "summary",
-    title: "Memepedia — The Wikipedia of Meme Coins",
+    title: "Memepedia - The Wikipedia of Meme Coins",
     description: siteDescription,
   },
 };

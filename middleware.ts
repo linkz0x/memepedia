@@ -25,21 +25,21 @@ export async function middleware(request: NextRequest) {
   );
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const isAdminRoute = request.nextUrl.pathname.startsWith("/council-of-elders");
   const isLoginPage = request.nextUrl.pathname === "/council-of-elders/login";
 
   if (isAdminRoute && !isLoginPage) {
-    if (!session || session.user.email !== process.env.ADMIN_EMAIL) {
+    if (!user || user.email !== process.env.ADMIN_EMAIL) {
       return NextResponse.redirect(
         new URL("/council-of-elders/login", request.url)
       );
     }
   }
 
-  if (isLoginPage && session?.user.email === process.env.ADMIN_EMAIL) {
+  if (isLoginPage && user?.email === process.env.ADMIN_EMAIL) {
     return NextResponse.redirect(
       new URL("/council-of-elders", request.url)
     );

@@ -27,13 +27,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: entry.headline,
     openGraph: {
       type: "article",
-      title: `${entry.name} — Memepedia`,
+      title: `${entry.name} - Memepedia`,
       description: entry.headline,
       images,
     },
     twitter: {
       card: entry.image_url ? "summary_large_image" : "summary",
-      title: `${entry.name} — Memepedia`,
+      title: `${entry.name} - Memepedia`,
       description: entry.headline,
       images,
     },

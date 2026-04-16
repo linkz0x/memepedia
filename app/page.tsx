@@ -54,8 +54,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             className="text-xs sm:text-sm font-medium mt-1.5 transition-all duration-400 opacity-0"
           />
         </div>
-        <div className="flex-1 sm:hidden">
+        <div className="flex-1 sm:hidden flex items-center gap-2">
           <SearchBar />
+          <Link
+            href="/submit"
+            aria-label="Request an entry"
+            className="glass rounded-full w-11 h-11 flex items-center justify-center shrink-0 text-white/60 hover:text-white/90 transition-colors text-lg"
+          >
+            +
+          </Link>
         </div>
       </div>
 
