@@ -160,6 +160,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
     const width = window.innerWidth;
     const height = window.innerHeight;
     const size = Math.min(width, height);
+    const isMobile = width < 640;
 
     svg.attr("viewBox", `0 0 ${width} ${height}`);
     svg.selectAll("*").remove();
@@ -466,6 +467,10 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
         .ease(d3.easeBackOut.overshoot(1.2))
         .attr("r", (d) => d.r);
 
+      const fontFloor = isMobile ? 7 : 10;
+      const fontScale = isMobile ? 0.24 : 0.28;
+      const fontCap = isMobile ? 14 : 18;
+
       bubbles
         .append("text")
         .attr("text-anchor", "middle")
@@ -475,13 +480,13 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
         .style("font-weight", "500")
         .style("opacity", 0)
         .style("font-size", (d) =>
-          `${Math.max(10, Math.min(d.r * 0.28, 18))}px`
+          `${Math.max(fontFloor, Math.min(d.r * fontScale, fontCap))}px`
         );
 
       bubbles.each(function (d) {
-        const fontSize = Math.max(10, Math.min(d.r * 0.28, 18));
+        const fontSize = Math.max(fontFloor, Math.min(d.r * fontScale, fontCap));
         const textEl = (this as SVGGElement).querySelector("text");
-        if (textEl) applyWrappedText(textEl, d.data.name, d.r, fontSize);
+        if (textEl) applyWrappedText(textEl, d.data.name, d.r, fontSize, fontFloor);
       });
 
       bubbles
@@ -631,7 +636,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
 
     const expandedZoom = d3
       .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.3, 3])
+      .scaleExtent([0.3, isMobile ? 6 : 3])
       .on("zoom", (event) => {
         if (stateRef.current.transitioning) return;
 
