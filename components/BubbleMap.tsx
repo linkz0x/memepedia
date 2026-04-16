@@ -389,6 +389,8 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
 
     // --- EXPANDED MODE ---
 
+    let expandedInitialTransform = d3.zoomIdentity;
+
     function findClosestCategory(
       transform: d3.ZoomTransform
     ): d3.HierarchyCircularNode<HierarchyNode> | null {
@@ -421,15 +423,29 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
         .sum((d) => (d.significance ? d.significance * 0.05 + 1 : 1))
         .sort((a, b) => (b.value || 0) - (a.value || 0));
 
+      const childCount = catHierarchy.children?.length || 1;
+      const canvasSize = Math.max(900, Math.sqrt(childCount) * 320);
+
       const expandPack = d3
         .pack<HierarchyNode>()
-        .size([width * 0.85, height * 0.85])
+        .size([canvasSize, canvasSize])
         .padding(25);
 
       const catRoot = expandPack(catHierarchy);
-      const offsetX = (width - width * 0.85) / 2;
-      const offsetY = (height - height * 0.85) / 2 + 20;
       const childNodes = catRoot.children || [];
+
+      const viewportSize = Math.min(width, height);
+      const initialFit = (viewportSize * 0.85) / (catRoot.r * 2);
+      const initialX = width / 2 - catRoot.x * initialFit;
+      const initialY = height / 2 - catRoot.y * initialFit;
+      expandedInitialTransform = d3.zoomIdentity
+        .translate(initialX, initialY)
+        .scale(initialFit);
+
+      expandedZoom.scaleExtent([
+        initialFit * 0.4,
+        initialFit * (isMobile ? 7 : 4),
+      ]);
 
       const color = TYPE_COLORS[type];
 
@@ -447,10 +463,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
         .data(childNodes)
         .join("g")
         .attr("class", "entry")
-        .attr(
-          "transform",
-          (d) => `translate(${d.x + offsetX},${d.y + offsetY})`
-        )
+        .attr("transform", (d) => `translate(${d.x},${d.y})`)
         .style("cursor", "pointer");
 
       bubbles
@@ -554,11 +567,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
             .on("end", () => {
               stateRef.current.transitioning = false;
               svg.call(expandedZoom);
-              svg
-                .call(
-                  expandedZoom.transform,
-                  d3.zoomIdentity.translate(0, 0).scale(1)
-                );
+              svg.call(expandedZoom.transform, expandedInitialTransform);
             });
         });
     }
@@ -636,11 +645,11 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
 
     const expandedZoom = d3
       .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.3, isMobile ? 6 : 3])
       .on("zoom", (event) => {
         if (stateRef.current.transitioning) return;
 
-        if (event.sourceEvent && event.transform.k < 0.7) {
+        const initialK = expandedInitialTransform.k;
+        if (event.sourceEvent && event.transform.k < initialK * 0.7) {
           transitionToOverview();
           return;
         }
