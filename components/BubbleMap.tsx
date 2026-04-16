@@ -479,7 +479,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
         .attr("stroke", color)
         .attr("stroke-opacity", 0.3)
         .attr("stroke-width", 1.5)
-        .attr("filter", isMobile ? "none" : "url(#glow)")
+        .attr("filter", "url(#glow)")
         .transition()
         .duration(600)
         .delay((_, i) => i * 60)
