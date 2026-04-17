@@ -231,7 +231,7 @@ function hexAlpha(hex: string, alpha: number): string {
 }
 
 const BAKE_RADIUS = 200;
-const BAKE_PAD = 40;
+const BAKE_PAD = 100;
 const BAKE_EXTENT = BAKE_RADIUS + BAKE_PAD;
 
 type BakedBubble = ImageBitmap | HTMLCanvasElement;
