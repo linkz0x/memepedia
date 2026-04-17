@@ -541,6 +541,8 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
     let expandedTransform = d3.zoomIdentity;
     let expandedInitialTransform = d3.zoomIdentity;
     let hoveredNodeIndex = -1;
+    let hoverProgress = 0;
+    let hoverAnimId = 0;
     const animState = { start: 0, duration: 600 };
 
     const fontFloor = isMobile ? 7 : 10;
@@ -586,11 +588,13 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
         }
       }
 
-      if (hoveredNodeIndex >= 0 && hoveredNodeIndex < expandedChildNodes.length && expandedType) {
+      if (hoveredNodeIndex >= 0 && hoveredNodeIndex < expandedChildNodes.length && expandedType && hoverProgress > 0) {
         const hNode = expandedChildNodes[hoveredNodeIndex];
         const hColor = TYPE_COLORS[expandedType];
-        ctx.strokeStyle = hexAlpha(hColor, 0.6);
-        ctx.lineWidth = 2.5 / expandedTransform.k;
+        const opacity = 0.2 + hoverProgress * 0.3;
+        const lw = (1.5 + hoverProgress * 0.5) / expandedTransform.k;
+        ctx.strokeStyle = hexAlpha(hColor, opacity);
+        ctx.lineWidth = lw;
         ctx.beginPath();
         ctx.arc(hNode.x, hNode.y, hNode.r, 0, Math.PI * 2);
         ctx.stroke();
@@ -912,6 +916,22 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
     });
 
     canvas.style.cursor = "grab";
+
+    function animateHover(target: number) {
+      cancelAnimationFrame(hoverAnimId);
+      const start = performance.now();
+      const from = hoverProgress;
+      const duration = 200;
+      const tick = () => {
+        const elapsed = performance.now() - start;
+        const t = Math.min(1, elapsed / duration);
+        hoverProgress = from + (target - from) * t;
+        drawCanvas(1);
+        if (t < 1) hoverAnimId = requestAnimationFrame(tick);
+      };
+      hoverAnimId = requestAnimationFrame(tick);
+    }
+
     canvas.addEventListener("mousemove", (event) => {
       if (stateRef.current.mode !== "expanded") return;
       const hit = findBubbleAtPoint(event.clientX, event.clientY);
@@ -919,7 +939,14 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       canvas.style.cursor = hit ? "pointer" : "grab";
       if (newIndex !== hoveredNodeIndex) {
         hoveredNodeIndex = newIndex;
-        drawCanvas(1);
+        animateHover(newIndex >= 0 ? 1 : 0);
+      }
+    });
+
+    canvas.addEventListener("mouseleave", () => {
+      if (hoveredNodeIndex >= 0) {
+        hoveredNodeIndex = -1;
+        animateHover(0);
       }
     });
 
