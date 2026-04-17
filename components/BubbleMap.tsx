@@ -540,6 +540,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
     let expandedType: EntryType | null = null;
     let expandedTransform = d3.zoomIdentity;
     let expandedInitialTransform = d3.zoomIdentity;
+    let hoveredNodeIndex = -1;
     const animState = { start: 0, duration: 600 };
 
     const fontFloor = isMobile ? 7 : 10;
@@ -583,6 +584,16 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
             halfSize * 2
           );
         }
+      }
+
+      if (hoveredNodeIndex >= 0 && hoveredNodeIndex < expandedChildNodes.length && expandedType) {
+        const hNode = expandedChildNodes[hoveredNodeIndex];
+        const hColor = TYPE_COLORS[expandedType];
+        ctx.strokeStyle = hexAlpha(hColor, 0.6);
+        ctx.lineWidth = 2.5 / expandedTransform.k;
+        ctx.beginPath();
+        ctx.arc(hNode.x, hNode.y, hNode.r, 0, Math.PI * 2);
+        ctx.stroke();
       }
 
       ctx.textAlign = "center";
@@ -904,7 +915,12 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
     canvas.addEventListener("mousemove", (event) => {
       if (stateRef.current.mode !== "expanded") return;
       const hit = findBubbleAtPoint(event.clientX, event.clientY);
+      const newIndex = hit ? expandedChildNodes.indexOf(hit) : -1;
       canvas.style.cursor = hit ? "pointer" : "grab";
+      if (newIndex !== hoveredNodeIndex) {
+        hoveredNodeIndex = newIndex;
+        drawCanvas(1);
+      }
     });
 
     svg.call(overviewZoom);
