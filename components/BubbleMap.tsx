@@ -469,7 +469,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       bubbles
         .append("circle")
         .attr("r", 0)
-        .attr("fill", `url(#grad-expand-${type})`)
+        .attr("fill", isMobile ? `${color}40` : `url(#grad-expand-${type})`)
         .attr("stroke", color)
         .attr("stroke-opacity", 0.3)
         .attr("stroke-width", 1.5)
