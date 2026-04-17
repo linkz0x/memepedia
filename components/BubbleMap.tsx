@@ -144,8 +144,160 @@ function applyWrappedText(
   });
 }
 
+function wrapForCanvas(
+  ctx: CanvasRenderingContext2D,
+  name: string,
+  maxWidth: number
+): string[] {
+  if (ctx.measureText(name).width <= maxWidth) return [name];
+
+  const lines: string[] = [];
+  const words = name.split(/\s+/);
+  let currentLine = "";
+
+  for (const word of words) {
+    if (ctx.measureText(word).width > maxWidth) {
+      if (currentLine) {
+        lines.push(currentLine);
+        currentLine = "";
+      }
+      let remaining = word;
+      while (ctx.measureText(remaining).width > maxWidth) {
+        let cut = remaining.length;
+        while (
+          cut > 1 &&
+          ctx.measureText(remaining.slice(0, cut)).width > maxWidth
+        ) {
+          cut--;
+        }
+        if (cut < 1) cut = 1;
+        lines.push(remaining.slice(0, cut));
+        remaining = remaining.slice(cut);
+      }
+      currentLine = remaining;
+    } else {
+      const test = currentLine ? `${currentLine} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = test;
+      }
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
+function fitTextForCanvas(
+  ctx: CanvasRenderingContext2D,
+  name: string,
+  radius: number,
+  maxFontSize: number,
+  minFontSize: number
+): { lines: string[]; fontSize: number } {
+  const maxWidth = radius * 1.75;
+  const maxHeight = radius * 1.75;
+  const startSize = Math.max(minFontSize, Math.floor(maxFontSize));
+
+  let chosenLines: string[] = [name];
+  let chosenFontSize = minFontSize;
+
+  for (let fs = startSize; fs >= minFontSize; fs -= 1) {
+    ctx.font = `500 ${fs}px Inter, system-ui, sans-serif`;
+    const lines = wrapForCanvas(ctx, name, maxWidth);
+    const totalHeight = lines.length * fs * 1.15;
+
+    if (totalHeight <= maxHeight) {
+      chosenLines = lines;
+      chosenFontSize = fs;
+      break;
+    }
+
+    if (fs === minFontSize) {
+      chosenLines = lines;
+      chosenFontSize = fs;
+    }
+  }
+
+  return { lines: chosenLines, fontSize: chosenFontSize };
+}
+
+function hexAlpha(hex: string, alpha: number): string {
+  const a = Math.round(Math.max(0, Math.min(1, alpha)) * 255)
+    .toString(16)
+    .padStart(2, "0");
+  return `${hex}${a}`;
+}
+
+const BAKE_RADIUS = 200;
+const BAKE_PAD = 40;
+const BAKE_EXTENT = BAKE_RADIUS + BAKE_PAD;
+
+type BakedBubble = ImageBitmap | HTMLCanvasElement;
+
+async function bakeBubbleBitmap(
+  color: string,
+  dpr: number
+): Promise<BakedBubble> {
+  const size = Math.round(BAKE_EXTENT * 2 * dpr);
+
+  let canvas: OffscreenCanvas | HTMLCanvasElement;
+  if (typeof OffscreenCanvas !== "undefined") {
+    canvas = new OffscreenCanvas(size, size);
+  } else {
+    const c = document.createElement("canvas");
+    c.width = size;
+    c.height = size;
+    canvas = c;
+  }
+
+  const ctx = canvas.getContext("2d") as
+    | CanvasRenderingContext2D
+    | OffscreenCanvasRenderingContext2D
+    | null;
+  if (!ctx) return canvas as HTMLCanvasElement;
+
+  ctx.scale(dpr, dpr);
+  ctx.translate(BAKE_EXTENT, BAKE_EXTENT);
+
+  ctx.shadowBlur = 24;
+  ctx.shadowColor = color;
+
+  const grad = ctx.createRadialGradient(
+    -BAKE_RADIUS * 0.3,
+    -BAKE_RADIUS * 0.3,
+    0,
+    0,
+    0,
+    BAKE_RADIUS
+  );
+  grad.addColorStop(0, hexAlpha(color, 0.5));
+  grad.addColorStop(1, hexAlpha(color, 0.1));
+  ctx.fillStyle = grad;
+
+  ctx.beginPath();
+  ctx.arc(0, 0, BAKE_RADIUS, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.shadowColor = "transparent";
+  ctx.strokeStyle = hexAlpha(color, 0.3);
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  if (canvas instanceof OffscreenCanvas) {
+    try {
+      return canvas.transferToImageBitmap();
+    } catch {
+      return canvas as unknown as HTMLCanvasElement;
+    }
+  }
+  return canvas;
+}
+
 export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const router = useRouter();
   const stateRef = useRef<{
     mode: Mode;
@@ -154,16 +306,28 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
   }>({ mode: "overview", expandedType: null, transitioning: false });
 
   useEffect(() => {
-    if (!svgRef.current) return;
+    if (!svgRef.current || !canvasRef.current) return;
 
     const svg = d3.select(svgRef.current);
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
     const width = window.innerWidth;
     const height = window.innerHeight;
     const size = Math.min(width, height);
     const isMobile = width < 640;
+    const dpr = window.devicePixelRatio || 1;
 
     svg.attr("viewBox", `0 0 ${width} ${height}`);
     svg.selectAll("*").remove();
+
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    canvas.style.display = "none";
+
     stateRef.current = {
       mode: "overview",
       expandedType: null,
@@ -206,23 +370,6 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
         .attr("offset", "100%")
         .attr("stop-color", color)
         .attr("stop-opacity", 0.12);
-
-      const expandGrad = defs
-        .append("radialGradient")
-        .attr("id", `grad-expand-${type}`)
-        .attr("cx", "35%")
-        .attr("cy", "35%")
-        .attr("r", "65%");
-      expandGrad
-        .append("stop")
-        .attr("offset", "0%")
-        .attr("stop-color", color)
-        .attr("stop-opacity", 0.5);
-      expandGrad
-        .append("stop")
-        .attr("offset", "100%")
-        .attr("stop-color", color)
-        .attr("stop-opacity", 0.1);
     });
 
     const filter = defs
@@ -280,13 +427,8 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
     }
 
     const overviewContainer = svg.append("g").attr("class", "overview");
-    const expandedContainer = svg
-      .append("g")
-      .attr("class", "expanded")
-      .style("opacity", 0)
-      .style("pointer-events", "none");
 
-    // --- OVERVIEW MODE ---
+    // --- OVERVIEW MODE (still SVG) ---
 
     const hierarchy = d3
       .hierarchy(buildHierarchy(entries))
@@ -346,9 +488,10 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       });
 
     overviewText.each(function (d) {
-      const fontSize = d.depth === 1
-        ? Math.max(12, Math.min(d.r * 0.25, 28))
-        : Math.max(8, Math.min(d.r * 0.35, 14));
+      const fontSize =
+        d.depth === 1
+          ? Math.max(12, Math.min(d.r * 0.25, 28))
+          : Math.max(8, Math.min(d.r * 0.35, 14));
       applyWrappedText(this as SVGTextElement, d.data.name, d.r, fontSize);
     });
 
@@ -387,9 +530,172 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       });
     }
 
-    // --- EXPANDED MODE ---
+    // --- EXPANDED MODE (canvas) ---
 
+    const bubbleBitmaps = new Map<EntryType, BakedBubble>();
+
+    let expandedChildNodes: d3.HierarchyCircularNode<HierarchyNode>[] = [];
+    let expandedType: EntryType | null = null;
+    let expandedTransform = d3.zoomIdentity;
     let expandedInitialTransform = d3.zoomIdentity;
+    const animState = { start: 0, duration: 600 };
+
+    const fontFloor = isMobile ? 7 : 10;
+    const fontScale = isMobile ? 0.24 : 0.28;
+    const fontCap = isMobile ? 14 : 18;
+
+    function drawCanvas(progress = 1) {
+      if (!ctx) return;
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+
+      if (!expandedType || expandedChildNodes.length === 0) {
+        ctx.restore();
+        return;
+      }
+
+      const bitmap = bubbleBitmaps.get(expandedType);
+
+      ctx.translate(expandedTransform.x, expandedTransform.y);
+      ctx.scale(expandedTransform.k, expandedTransform.k);
+
+      if (bitmap) {
+        for (let i = 0; i < expandedChildNodes.length; i++) {
+          const node = expandedChildNodes[i];
+          const delay = i * 0.035;
+          let p = (progress - delay) / (1 - delay);
+          p = Math.max(0, Math.min(1, p));
+          const eased = p < 1 ? 1 - Math.pow(1 - p, 3) : 1;
+          const r = node.r * eased;
+          if (r <= 0.1) continue;
+          const scale = r / BAKE_RADIUS;
+          const halfSize = BAKE_EXTENT * scale;
+          ctx.drawImage(
+            bitmap as CanvasImageSource,
+            node.x - halfSize,
+            node.y - halfSize,
+            halfSize * 2,
+            halfSize * 2
+          );
+        }
+      }
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#ffffff";
+
+      for (let i = 0; i < expandedChildNodes.length; i++) {
+        const node = expandedChildNodes[i];
+        const delay = i * 0.035 + 0.2;
+        let p = (progress - delay) / (1 - delay);
+        p = Math.max(0, Math.min(1, p));
+        if (p <= 0) continue;
+        ctx.globalAlpha = p;
+
+        const desiredSize = Math.max(
+          fontFloor,
+          Math.min(node.r * fontScale, fontCap)
+        );
+        const { lines, fontSize } = fitTextForCanvas(
+          ctx,
+          node.data.name,
+          node.r,
+          desiredSize,
+          fontFloor
+        );
+        ctx.font = `500 ${fontSize}px Inter, system-ui, sans-serif`;
+        const lineHeight = fontSize * 1.15;
+        const startY = -((lines.length - 1) * lineHeight) / 2;
+        for (let j = 0; j < lines.length; j++) {
+          ctx.fillText(lines[j], node.x, node.y + startY + j * lineHeight);
+        }
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+
+    function animateEntry() {
+      animState.start = performance.now();
+      const tick = () => {
+        const elapsed = performance.now() - animState.start;
+        const progress = Math.min(1, elapsed / animState.duration);
+        drawCanvas(progress);
+        if (progress < 1 && stateRef.current.mode === "expanded") {
+          requestAnimationFrame(tick);
+        }
+      };
+      requestAnimationFrame(tick);
+    }
+
+    async function renderExpanded(type: EntryType) {
+      expandedType = type;
+
+      const catHierarchy = d3
+        .hierarchy(buildCategoryHierarchy(entries, type))
+        .sum((d) => (d.significance ? d.significance * 0.05 + 1 : 1))
+        .sort((a, b) => (b.value || 0) - (a.value || 0));
+
+      const childCount = catHierarchy.children?.length || 1;
+      const canvasSize = Math.max(900, Math.sqrt(childCount) * 320);
+
+      const expandPack = d3
+        .pack<HierarchyNode>()
+        .size([canvasSize, canvasSize])
+        .padding(25);
+
+      const catRoot = expandPack(catHierarchy);
+      expandedChildNodes = catRoot.children || [];
+
+      const viewportSize = Math.min(width, height);
+      const initialFit = (viewportSize * 0.85) / (catRoot.r * 2);
+      const initialTX = width / 2 - catRoot.x * initialFit;
+      const initialTY = height / 2 - catRoot.y * initialFit;
+      expandedInitialTransform = d3.zoomIdentity
+        .translate(initialTX, initialTY)
+        .scale(initialFit);
+      expandedTransform = expandedInitialTransform;
+
+      expandedZoom.scaleExtent([
+        initialFit * 0.4,
+        initialFit * (isMobile ? 7 : 4),
+      ]);
+
+      const color = TYPE_COLORS[type];
+
+      const label = document.getElementById("category-label");
+      if (label) {
+        label.textContent = TYPE_LABELS[type];
+        label.style.color = color;
+        label.style.opacity = "1";
+      }
+
+      if (!bubbleBitmaps.has(type)) {
+        const bitmap = await bakeBubbleBitmap(color, dpr);
+        bubbleBitmaps.set(type, bitmap);
+      }
+
+      canvas.style.display = "block";
+      animateEntry();
+    }
+
+    function findBubbleAtPoint(
+      clientX: number,
+      clientY: number
+    ): d3.HierarchyCircularNode<HierarchyNode> | null {
+      const rect = canvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      const px = (x - expandedTransform.x) / expandedTransform.k;
+      const py = (y - expandedTransform.y) / expandedTransform.k;
+
+      for (const node of expandedChildNodes) {
+        const dx = px - node.x;
+        const dy = py - node.y;
+        if (dx * dx + dy * dy <= node.r * node.r) return node;
+      }
+      return null;
+    }
 
     function findClosestCategory(
       transform: d3.ZoomTransform
@@ -415,125 +721,6 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       return closest;
     }
 
-    function renderExpanded(type: EntryType) {
-      expandedContainer.selectAll("*").remove();
-
-      const catHierarchy = d3
-        .hierarchy(buildCategoryHierarchy(entries, type))
-        .sum((d) => (d.significance ? d.significance * 0.05 + 1 : 1))
-        .sort((a, b) => (b.value || 0) - (a.value || 0));
-
-      const childCount = catHierarchy.children?.length || 1;
-      const canvasSize = Math.max(900, Math.sqrt(childCount) * 320);
-
-      const expandPack = d3
-        .pack<HierarchyNode>()
-        .size([canvasSize, canvasSize])
-        .padding(25);
-
-      const catRoot = expandPack(catHierarchy);
-      const childNodes = catRoot.children || [];
-
-      const viewportSize = Math.min(width, height);
-      const initialFit = (viewportSize * 0.85) / (catRoot.r * 2);
-      const initialX = width / 2 - catRoot.x * initialFit;
-      const initialY = height / 2 - catRoot.y * initialFit;
-      expandedInitialTransform = d3.zoomIdentity
-        .translate(initialX, initialY)
-        .scale(initialFit);
-
-      expandedZoom.scaleExtent([
-        initialFit * 0.4,
-        initialFit * (isMobile ? 7 : 4),
-      ]);
-
-      const color = TYPE_COLORS[type];
-
-      const label = document.getElementById("category-label");
-      if (label) {
-        label.textContent = TYPE_LABELS[type];
-        label.style.color = color;
-        label.style.opacity = "1";
-      }
-
-      const bubbles = expandedContainer
-        .selectAll<SVGGElement, d3.HierarchyCircularNode<HierarchyNode>>(
-          "g.entry"
-        )
-        .data(childNodes)
-        .join("g")
-        .attr("class", "entry")
-        .attr("transform", (d) => `translate(${d.x},${d.y})`)
-        .style("cursor", "pointer");
-
-      bubbles
-        .append("circle")
-        .attr("r", 0)
-        .attr("fill", `url(#grad-expand-${type})`)
-        .attr("stroke", color)
-        .attr("stroke-opacity", 0.3)
-        .attr("stroke-width", 1.5)
-        .attr("filter", "url(#glow)")
-        .transition()
-        .duration(600)
-        .delay((_, i) => i * 60)
-        .ease(d3.easeBackOut.overshoot(1.2))
-        .attr("r", (d) => d.r);
-
-      const fontFloor = isMobile ? 7 : 10;
-      const fontScale = isMobile ? 0.24 : 0.28;
-      const fontCap = isMobile ? 14 : 18;
-
-      bubbles
-        .append("text")
-        .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "central")
-        .attr("fill", "white")
-        .attr("pointer-events", "none")
-        .style("font-weight", "500")
-        .style("opacity", 0)
-        .style("font-size", (d) =>
-          `${Math.max(fontFloor, Math.min(d.r * fontScale, fontCap))}px`
-        );
-
-      bubbles.each(function (d) {
-        const fontSize = Math.max(fontFloor, Math.min(d.r * fontScale, fontCap));
-        const textEl = (this as SVGGElement).querySelector("text");
-        if (textEl) applyWrappedText(textEl, d.data.name, d.r, fontSize, fontFloor);
-      });
-
-      bubbles
-        .select("text")
-        .transition()
-        .duration(400)
-        .delay((_, i) => 200 + i * 60)
-        .style("opacity", 1);
-
-      bubbles
-        .on("mouseover", function () {
-          d3.select(this)
-            .select("circle")
-            .transition()
-            .duration(200)
-            .attr("stroke-opacity", 0.6)
-            .attr("stroke-width", 2.5);
-        })
-        .on("mouseout", function () {
-          d3.select(this)
-            .select("circle")
-            .transition()
-            .duration(200)
-            .attr("stroke-opacity", 0.3)
-            .attr("stroke-width", 1.5);
-        })
-        .on("click", (event, d) => {
-          event.stopPropagation();
-          if (d.data.slug && d.data.type) {
-            navigateTo(`/${TYPE_PLURALS[d.data.type]}/${d.data.slug}`);
-          }
-        });
-    }
-
     function transitionToExpanded(type: EntryType) {
       if (stateRef.current.transitioning) return;
       stateRef.current.transitioning = true;
@@ -546,18 +733,16 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
         .duration(350)
         .ease(d3.easeCubicIn)
         .style("opacity", 0.6)
-        .on("end", () => {
+        .on("end", async () => {
           stateRef.current.mode = "expanded";
           stateRef.current.expandedType = type;
 
-          overviewContainer.style("opacity", 0).style("pointer-events", "none");
+          overviewContainer
+            .style("opacity", 0)
+            .style("pointer-events", "none");
           svg.on(".zoom", null);
 
-          renderExpanded(type);
-
-          expandedContainer
-            .style("pointer-events", "all")
-            .style("opacity", 1);
+          await renderExpanded(type);
 
           overlay
             .transition()
@@ -566,8 +751,11 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
             .style("opacity", 0)
             .on("end", () => {
               stateRef.current.transitioning = false;
-              svg.call(expandedZoom);
-              svg.call(expandedZoom.transform, expandedInitialTransform);
+              d3.select(canvas).call(expandedZoom);
+              d3.select(canvas).call(
+                expandedZoom.transform,
+                expandedInitialTransform
+              );
             });
         });
     }
@@ -588,16 +776,20 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
         .on("end", () => {
           stateRef.current.mode = "overview";
           stateRef.current.expandedType = null;
+          expandedType = null;
+          expandedChildNodes = [];
 
           const label = document.getElementById("category-label");
           if (label) {
             label.style.opacity = "0";
           }
 
-          expandedContainer
-            .style("opacity", 0)
-            .style("pointer-events", "none");
-          expandedContainer.selectAll("*").remove();
+          d3.select(canvas).on(".zoom", null);
+          canvas.style.display = "none";
+          if (ctx) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+          }
 
           overviewContainer
             .style("opacity", 1)
@@ -618,8 +810,6 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
             });
         });
     }
-
-    // --- ZOOM BEHAVIORS ---
 
     const overviewZoom = d3
       .zoom<SVGSVGElement, unknown>()
@@ -644,7 +834,7 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       });
 
     const expandedZoom = d3
-      .zoom<SVGSVGElement, unknown>()
+      .zoom<HTMLCanvasElement, unknown>()
       .on("zoom", (event) => {
         if (stateRef.current.transitioning) return;
 
@@ -654,7 +844,8 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
           return;
         }
 
-        expandedContainer.attr("transform", event.transform.toString());
+        expandedTransform = event.transform;
+        drawCanvas(1);
       });
 
     overviewNodes.style("cursor", "pointer").on("click", (event, d) => {
@@ -696,6 +887,22 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       }
     });
 
+    canvas.addEventListener("click", (event) => {
+      if (stateRef.current.transitioning) return;
+      if (stateRef.current.mode !== "expanded") return;
+      const hit = findBubbleAtPoint(event.clientX, event.clientY);
+      if (hit && hit.data.slug && hit.data.type) {
+        navigateTo(`/${TYPE_PLURALS[hit.data.type]}/${hit.data.slug}`);
+      }
+    });
+
+    canvas.style.cursor = "grab";
+    canvas.addEventListener("mousemove", (event) => {
+      if (stateRef.current.mode !== "expanded") return;
+      const hit = findBubbleAtPoint(event.clientX, event.clientY);
+      canvas.style.cursor = hit ? "pointer" : "grab";
+    });
+
     svg.call(overviewZoom);
     svg.call(overviewZoom.transform, initialTransform);
 
@@ -705,14 +912,26 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
 
     return () => {
       svg.on(".zoom", null);
+      d3.select(canvas).on(".zoom", null);
+      bubbleBitmaps.forEach((bmp) => {
+        if (bmp instanceof ImageBitmap) bmp.close();
+      });
+      bubbleBitmaps.clear();
     };
   }, [entries, router, expandType]);
 
   return (
-    <svg
-      ref={svgRef}
-      className="w-full h-full"
-      style={{ background: "transparent" }}
-    />
+    <div className="relative w-full h-full">
+      <svg
+        ref={svgRef}
+        className="absolute inset-0 w-full h-full"
+        style={{ background: "transparent" }}
+      />
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full"
+        style={{ touchAction: "none" }}
+      />
+    </div>
   );
 }
