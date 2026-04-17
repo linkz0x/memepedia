@@ -441,7 +441,9 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       .padding((d) => (d.depth === 0 ? 30 : 15));
 
     const root = pack(hierarchy);
-    const nodes = root.descendants().slice(1);
+    const nodes = isMobile
+      ? root.descendants().slice(1).filter((d) => d.depth === 1)
+      : root.descendants().slice(1);
 
     const overviewNodes = overviewContainer
       .selectAll<SVGGElement, d3.HierarchyCircularNode<HierarchyNode>>("g")
@@ -549,6 +551,8 @@ export default function BubbleMap({ entries, expandType }: BubbleMapProps) {
       ctx.save();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
 
       if (!expandedType || expandedChildNodes.length === 0) {
         ctx.restore();
